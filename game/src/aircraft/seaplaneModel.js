@@ -225,7 +225,8 @@ export function buildSeaplane() {
   body.add(landingGlow);
 
   // from the pilot's seat the cabin shell and glass would fill the view: hide them there
-  const cabinParts = [cabin, tailcone, belly, cheat, wind, roofFair, pilot, cowl, cowlRing, spinner, ...body.children.filter((c) => c.geometry && c.geometry.type === 'BoxGeometry' && c.position.y > 0.3 && Math.abs(c.position.x) > 0.6)];
+  // from the left seat the wing root sits edge-on at eye height: hide it with the cabin
+  const cabinParts = [wing, cabin, tailcone, belly, cheat, wind, roofFair, pilot, cowl, cowlRing, spinner, ...body.children.filter((c) => c.geometry && c.geometry.type === 'BoxGeometry' && c.position.y > 0.3 && Math.abs(c.position.x) > 0.6)];
   root.userData = { prop, disc, ailerons, flaps, elevator, rudder, lights, landing, landingGlow, cabinParts };
   return root;
 }
@@ -244,7 +245,7 @@ export function animateSeaplane(model, ac, t, opts = {}) {
   u.rudder.rotation.y = c.rudder * 0.45;
   const spin = (ac.engine.rpm / 60) * Math.PI * 2;
   u.prop.rotation.z += spin * (opts.dt ?? 1 / 60) * 0.12;
-  u.disc.material.opacity = Math.min(opts.cockpit ? 0.1 : 0.32, ac.engine.rpm / 6000);
+  u.disc.material.opacity = opts.cockpit ? 0 : Math.min(0.32, ac.engine.rpm / 6000);
   // a running prop is a blur: blades show only when turning slowly or stopped
   u.prop.visible = ac.engine.rpm < 500 || !!opts.still;
   if (opts.still) u.prop.rotation.z = 0.4;

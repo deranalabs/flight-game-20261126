@@ -3,6 +3,7 @@
 //   cover   - Cinder Ring Trial at dusk, chase view, about to fly ring 8 with the runway beyond
 //   cockpit - Tallow Ridge Fire, cockpit view, low run-in on a burning slope
 //   night   - Gannet Point Lantern, chase view, the cove flare gate at night
+//   mail    - Morning Mail Run, chase view, short final onto the Saltmoor water lane
 //   hangar  - the hangar screens after the autopilot has flown the first five missions
 
 import { missionById, MISSIONS } from '../missions/index.js';
@@ -40,6 +41,14 @@ export const SHOTS = {
       return o && o.kind === 'fire' && o.bot && o.bot.phase === 'pass' && m.ac.waterKg > 700 && distTo(m, o.fire.x, o.fire.z) < 520;
     });
     return { ms, view: 'cockpit' };
+  },
+  mail() {
+    const ms = startMission(missionById('mailRun'), {}, 1);
+    runUntil(ms, (m) => {
+      const o = currentObjective(m);
+      return m.index === 3 && o && o.bot && o.bot.phase === 'final' && distTo(m, o.rw.x, o.rw.z) < 1300;
+    });
+    return { ms, view: 'chase', camera: { distance: 21, height: 5, side: -6, lookAhead: 40, lookDown: -9, fov: 64 } };
   },
   night() {
     const ms = startMission(missionById('lighthouseNight'), {}, 1);
