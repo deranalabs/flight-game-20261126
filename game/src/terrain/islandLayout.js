@@ -27,7 +27,7 @@ export const RUNWAYS = {
   },
   ridgeback: {
     id: 'ridgeback', name: 'Ridgeback Strip', kind: 'strip',
-    x: -5150, z: -700, hdg: 0, length: 340, width: 18, elev: 0, numbers: ['36', '18'],
+    x: -5150, z: -700, hdg: 180, length: 380, width: 18, elev: 0, numbers: ['18', '36'],
   },
   saltmoorLane: {
     id: 'saltmoorLane', name: 'Saltmoor Water Lane', kind: 'lane',
@@ -44,6 +44,10 @@ export const RUNWAYS = {
   halyardHarbour: {
     id: 'halyardHarbour', name: 'Halyard Harbour', kind: 'lane',
     x: 300, z: 4150, hdg: 90, length: 1200, width: 80, elev: 0, numbers: [],
+  },
+  mirrorLagoon: {
+    id: 'mirrorLagoon', name: 'Mirror Lagoon scoop run', kind: 'lane',
+    x: -2700, z: 1600, hdg: 0, length: 1800, width: 140, elev: 0, numbers: [],
   },
 };
 

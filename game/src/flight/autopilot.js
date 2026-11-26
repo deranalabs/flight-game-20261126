@@ -46,12 +46,19 @@ function holdSpeed(ac, ap, speedWanted, dt) {
 
 /** Fly toward a heading at an altitude (m above sea) and speed (m/s). */
 export function flyHeading(ac, ap, hdg, alt, speed, dt, maxBank = 30) {
-  const herr = wrap180(hdg - ac.hdg);
+  // steer the ground track, not the nose, so a crosswind does not push her off the line
+  const track = ac.gs > 15 && !ac.onSurface ? Math.atan2(ac.vel.x, -ac.vel.z) / DEG : ac.hdg;
+  const herr = wrap180(hdg - track);
   const bankWanted = clamp(herr * 1.1, -maxBank, maxBank);
   steerBank(ac, ap, bankWanted, dt);
-  const vsWanted = clamp((alt - ac.pos.y) * 0.12, -6, 4.5);
-  holdVs(ac, ap, vsWanted, dt);
-  holdSpeed(ac, ap, speed, dt);
+  if (!ac.engine.running) {
+    // no engine: the nose holds best-glide speed and height goes where it must
+    glideSpeed(ac, ap, speed, dt);
+  } else {
+    const vsWanted = clamp((alt - ac.pos.y) * 0.12, -6, 4.5);
+    holdVs(ac, ap, vsWanted, dt);
+    holdSpeed(ac, ap, speed, dt);
+  }
   ac.controls.rudder = coordinate(ac);
   ac.controls.flaps = speed < 32 ? 0.5 : 0;
   ac.controls.brake = 0;
@@ -72,6 +79,13 @@ export function flyTakeoff(ac, ap, hdg, dt) {
   c.aileron = clamp(-ac.bank * 0.05 - ac.rollRate * 0.3, -1, 1);
   const herr = wrap180(hdg - ac.hdg);
   const rotate = stallSpeed(ac.spec, ac.mass || 1800, 0.5) * 1.08;
+  if (ac.onSurface && Math.abs(herr) > 12 && ac.gs < 6) {
+    // turn round on the spot first: a little power and full rudder
+    c.throttle = 0.3;
+    c.rudder = herr > 0 ? 1 : -1;
+    c.elevator = 0;
+    return;
+  }
   if (ac.onSurface) {
     c.rudder = clamp(herr * 0.08, -1, 1);
     c.elevator = ac.ias > rotate ? 0.9 : ac.surfaceKind === 'water' ? 0.3 : 0;
@@ -144,12 +158,22 @@ export function flyLanding(ac, ap, rw, landingHdg, dt, opts = {}) {
   holdVs(ac, ap, vsWanted, dt);
   holdSpeed(ac, ap, approachSpeed, dt);
   if (!ac.engine.running) {
-    // dead stick: trade height for the field, hold best glide speed with the nose
-    c.throttle = 0;
-    const glideV = approachSpeed * 1.1;
-    c.elevator = clamp(ap.vsInt + (ac.ias - glideV) * 0.05 - ac.pitchRate * 0.6, -1, 1);
+    // dead stick: below the path keep best glide and stretch; above it dive off height
+    const glideV = ac.pos.y < altWanted ? approachSpeed * 1.08 : approachSpeed * 1.25;
+    glideSpeed(ac, ap, glideV, dt);
+    c.flaps = ac.pos.y < altWanted - 15 ? 0 : 1;
   }
   return ap.phase;
+}
+
+/** Pitch for speed: with no power the elevator holds an airspeed. */
+function glideSpeed(ac, ap, speed, dt) {
+  // fast: raise the nose a little; slow: lower it. Gentle, so no phugoid builds up.
+  const err = ac.ias - speed;
+  const pitchWanted = clamp(-4 + err * 0.7, -14, 6);
+  ap.glideInt = clamp((ap.glideInt ?? 0) + (pitchWanted - ac.pitch) * dt * 0.01, -0.4, 0.4);
+  ac.controls.elevator = clamp(ap.glideInt + (pitchWanted - ac.pitch) * 0.04 - ac.pitchRate * 0.9, -1, 1);
+  ac.controls.throttle = 0;
 }
 
 /** Distance (m) of a standard approach start point before a runway's threshold. */

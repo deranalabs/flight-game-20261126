@@ -197,7 +197,7 @@ export function stepAircraft(ac, env, dt = STEP) {
     const normalLoad = Math.max(0, -force.y); // weight the wings are not yet carrying
     if (hs > 0.05) {
       const dir = v3(ac.vel.x / hs, 0, ac.vel.z / hs);
-      const decel = Math.min(hs / dt, (mu * Math.max(normalLoad, mass * G * 0.15)) / mass + (onWater ? 0.0012 * hs * hs : 0));
+      const decel = Math.min(hs / dt, (mu * Math.max(normalLoad, mass * G * 0.15)) / mass + (onWater ? 0.0012 * Math.min(hs, 15) ** 2 : 0));
       acc = addScaled(acc, dir, -decel);
       // tyres and float keels resist sideways sliding
       const side = dot(ac.vel, r);

@@ -92,7 +92,8 @@ export function groundHeight(x, z) {
  */
 export function surfaceAt(x, z) {
   for (const rw of LAND_RUNWAYS) {
-    const w = rectWeight(rw.x, rw.z, rw.hdg, rw.length / 2, rw.width / 2, 1, x, z);
+    // a cleared overrun of 60 m beyond each end rolls like the runway itself
+    const w = rectWeight(rw.x, rw.z, rw.hdg, rw.length / 2 + 60, rw.width / 2 + 4, 1, x, z);
     if (w >= 1) return { kind: rw.kind, height: rw.elev, runway: rw };
   }
   const g = groundHeight(x, z);
