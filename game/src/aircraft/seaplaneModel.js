@@ -252,7 +252,8 @@ export function animateSeaplane(model, ac, t, opts = {}) {
   u.lights.port.visible = on;
   u.lights.starboard.visible = on;
   u.lights.tail.visible = on;
-  u.lights.strobe.visible = on && (t % 1.2) < 0.08;
+  // the fin strobe flashes after dark only, where it helps; by day it is lost in the sun
+  u.lights.strobe.visible = on && !!opts.night && (t % 1.2) < 0.08;
   u.landing.intensity = opts.landingLight ? 600 : 0;
   u.landingGlow.visible = !!opts.landingLight;
   for (const p of u.cabinParts) p.visible = !opts.cockpit;

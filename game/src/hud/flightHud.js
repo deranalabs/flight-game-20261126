@@ -328,5 +328,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   if (info.banner) banner(ctx, W, H, info.banner.text, info.banner.color, info.banner.sub);
   else if (ac.stalled) banner(ctx, W, H, 'STALL', '#ff4d3d', 'Nose down, wings level, power on');
   else if (ac.stallWarn) banner(ctx, W, H, 'STALL WARNING', AMBER);
+  else if (ac.onSurface && ac.ias > (info.rotateSpeed ?? 27) && ac.controls.throttle > 0.5) banner(ctx, W, H, 'ROTATE', CYAN, 'Hold S or Down to lift the nose');
+  else if (!ac.onSurface && ac.agl < 12 && ac.vs < -1.2 && ac.ias < 40) banner(ctx, W, H, 'FLARE', CYAN, 'Ease back and close the throttle');
   text(ctx, `${info.view === 'cockpit' ? 'COCKPIT' : 'CHASE'} VIEW · C camera · F flaps · Space drop · Esc pause`, W - 16, info.panelTop - 12, 13, 'rgba(255,255,255,0.7)', 'right');
 }

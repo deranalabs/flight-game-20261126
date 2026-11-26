@@ -18,6 +18,7 @@ import { makeSoundEngine } from './audio/soundEngine.js';
 import { showTitle, showHangar, showBriefing, showDebrief, showPause, clearScreens } from './ui/screens.js';
 import { SHOTS, readShotRequest } from './shots/shotMode.js';
 import { flyHeading, makeAutopilot } from './flight/autopilot.js';
+import { stallSpeed } from './aircraft/ternSpec.js';
 import { LANDMARKS, RUNWAYS } from './terrain/islandLayout.js';
 import * as THREE from 'three';
 
@@ -206,7 +207,7 @@ function renderFlight(ms, dt, opts = {}) {
   model.visible = true;
   model.position.set(ac.pos.x, ac.pos.y, ac.pos.z);
   model.quaternion.set(ac.q.x, ac.q.y, ac.q.z, ac.q.w);
-  animateSeaplane(model, ac, game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit' });
+  animateSeaplane(model, ac, game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit', night: w.time.windows > 0.6 });
   const wind = ms.env.wind.at(ac.pos, ac.t);
   const wl = Math.hypot(wind.x, wind.z) || 1;
   w.markers.update(ms, game.t, { x: wind.x / wl * 0.4, z: wind.z / wl * 0.4 });
@@ -226,6 +227,7 @@ function renderFlight(ms, dt, opts = {}) {
   drawFlightHud(hud, W, H, ms, {
     missionNo: ms.def.order, missionCount: MISSIONS.length, view: game.view,
     panelTop: panel.top, banner, radio: ms.radio.current,
+    rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,
   });
 }
 
