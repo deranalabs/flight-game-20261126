@@ -31,7 +31,7 @@ export const SHOTS = {
     // the same moment at dusk, the sunset sky behind the volcano
     ms.def = { ...ms.def, timeOfDay: 'dusk' };
     // t: frozen between two flashes of the fin strobe, which shows from dusk on
-    return { ms, view: 'chase', t: 0.6, camera: { distance: 19, height: 7.5, side: 4, lookAhead: 40, lookDown: -10, fov: 64 } };
+    return { ms, view: 'chase', t: 0.6, camera: { distance: 21, height: 5, side: -6, lookAhead: 40, lookDown: -10, fov: 64 } };
   },
   cockpit() {
     const ms = startMission(missionById('waterBomber'), {}, 1);
