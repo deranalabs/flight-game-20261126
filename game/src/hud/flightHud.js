@@ -336,6 +336,26 @@ function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom) {
   if (full) text(ctx, scope, x + tw + 34, y + 18, 20, INK);
 }
 
+// A tag beside the next ring in the world: its number and distance, left of the ring so
+// the runway inside it and the aircraft below stay clear; drawn only in open sky.
+function ringTag(ctx, ms, info) {
+  const o = currentObjective(ms);
+  if (!o || o.kind !== 'ring' || !info.project || info.view === 'cockpit') return;
+  const c = info.project(o.x, o.y, o.z);
+  const top = info.project(o.x, o.y + o.r, o.z);
+  if (!c || !top) return;
+  const rad = Math.abs(c.y - top.y);
+  const m = Math.round(Math.hypot(ms.ac.pos.x - o.x, ms.ac.pos.y - o.y, ms.ac.pos.z - o.z) / 10) * 10;
+  const s = `RING ${ms.ringNo(o).split(' ')[0]} · ${m} M`;
+  ctx.font = `bold 18px ${FONT}`;
+  const w = ctx.measureText(s).width + 24;
+  const x = c.x - rad - 14 - w;
+  const y = c.y - 15;
+  if (x < 360 || y < 180 || y + 30 > info.panelTop - 150) return;
+  box(ctx, x, y, w, 30, 'rgba(10,16,24,0.7)', 8);
+  text(ctx, s, x + 12, y + 16, 18, AMBER);
+}
+
 function radioBox(ctx, W, msg, bottom, left = 14) {
   if (!msg) return;
   // bottom left, beside the aircraft: never over the aircraft, the runway or the sky ahead
@@ -384,6 +404,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   y = windBlock(ctx, W, ms, y + 4);
   y = chips(ctx, W, ms, y);
   if (y + 72 < info.panelTop - 24) { scoreLine(ctx, W, ms, y + 6); y += 68; }
+  ringTag(ctx, ms, info);
   // in the cockpit the left column runs down to the glare shield, so the radio sits up top
   checklist(ctx, ms, 14, ry + 212, info.view === 'cockpit' ? info.panelTop - 10 : info.panelTop - (info.radio ? 144 : 24));
   if (info.view === 'cockpit') radioBox(ctx, W, info.radio, 236, W / 2 - 195);

@@ -228,6 +228,10 @@ function renderFlight(ms, dt, opts = {}) {
     missionNo: ms.def.order, missionCount: MISSIONS.length, view: game.view,
     panelTop: panel.top, banner, radio: ms.radio.current,
     rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,
+    project: (x, y, z) => {
+      const v = new THREE.Vector3(x, y, z).project(camera);
+      return v.z < 1 ? { x: (v.x + 1) * W / 2, y: (1 - v.y) * H / 2 } : null;
+    },
   });
 }
 
