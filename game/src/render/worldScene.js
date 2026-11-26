@@ -46,6 +46,12 @@ export function buildWorld(timeId, weatherId, seed = 1) {
   const sun = new THREE.DirectionalLight(time.sun, time.sunIntensity);
   sun.position.set(...time.sunDir).multiplyScalar(5000);
   scene.add(hemi, sun);
+  if (time.rimFill) {
+    // a warm fill from the side away from a low sun, so faces turned from it are not black
+    const fill = new THREE.DirectionalLight(time.sun, time.rimFill);
+    fill.position.set(-time.sunDir[0], 0.6, -time.sunDir[2]).multiplyScalar(5000);
+    scene.add(fill);
+  }
   crater.children[1].intensity = time.windows > 0.6 ? 9e5 : 2e5;
 
   const plane = buildSeaplane();

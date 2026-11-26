@@ -16,15 +16,17 @@ export function buildSky(time) {
       horizon: { value: new THREE.Color(time.skyHorizon) },
       sunColor: { value: new THREE.Color(time.sunDisc) },
       sunDir: { value: sunDir },
+      halo: { value: time.halo ?? 0 },
     },
     vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunColor; uniform vec3 sunDir; varying vec3 vDir;
+    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunColor; uniform vec3 sunDir; uniform float halo; varying vec3 vDir;
       void main(){
         float h = clamp(vDir.y, -0.2, 1.0);
         vec3 col = mix(horizon, top, pow(max(h, 0.0), 0.55));
         if (h < 0.0) col = mix(horizon, horizon * 0.7, -h * 4.0);
         float s = max(dot(normalize(vDir), normalize(sunDir)), 0.0);
         col += sunColor * (pow(s, 900.0) * 1.6 + pow(s, 12.0) * 0.25);
+        col += sunColor * halo * (pow(s, 250.0) * 1.2 + pow(s, 40.0) * 0.45 + pow(s, 4.0) * 0.18);
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
@@ -92,7 +94,7 @@ export function buildClouds(time, weather, seed = 3) {
   return g;
 }
 
-function rippleTexture() {
+function rippleTexture(repeat) {
   const n = 256;
   const cv = document.createElement('canvas');
   cv.width = n; cv.height = n;
@@ -114,18 +116,20 @@ function rippleTexture() {
   ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(220, 220);
+  tex.repeat.set(repeat, repeat);
   return tex;
 }
 
 export function buildWater(time) {
   const geo = new THREE.PlaneGeometry(60000, 60000, 1, 1);
   geo.rotateX(-Math.PI / 2);
-  const normalMap = rippleTexture();
+  // glitter: a broader, brighter sun path on coarser ripples, so it reads from far away
+  const glitter = time.glitter ?? 0;
+  const normalMap = rippleTexture(glitter ? 110 : 220);
   const mat = new THREE.MeshPhongMaterial({
     color: time.water,
-    specular: new THREE.Color(time.sunDisc).multiplyScalar(0.6),
-    shininess: 60,
+    specular: new THREE.Color(time.sunDisc).multiplyScalar(glitter || 0.6),
+    shininess: glitter ? 28 : 60,
     normalMap,
     normalScale: new THREE.Vector2(0.35, 0.35),
     transparent: true,
