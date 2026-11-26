@@ -312,6 +312,30 @@ function scoreLine(ctx, W, ms, y) {
   text(ctx, best ? `LANDING ${best.letter} · ${best.points} PTS` : 'LANDING –', x + 12, y + 43, 16, best ? '#9ff0a8' : '#c9d3dc');
 }
 
+// Title and scope strip: on the key-help row if it fits there, else right-aligned just
+// above it when the right column leaves room, else the title alone on the key-help row.
+function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom) {
+  const left = 412;
+  const title = 'TIDEWING';
+  const scope = `${missionCount} MISSIONS · FUEL · DAMAGE · HANGAR`;
+  ctx.font = `bold 24px ${FONT}`;
+  const tw = ctx.measureText(title).width;
+  ctx.font = `bold 20px ${FONT}`;
+  const sw = ctx.measureText(scope).width;
+  const fw = tw + sw + 48;
+  const above = bottom - 80;
+  let full = true;
+  let w = fw;
+  let x;
+  let y = bottom - 40;
+  if (fw <= right - left) x = Math.max(left, Math.min(W / 2 - w / 2, right - w));
+  else if (above > rightColBottom + 10 && W - 16 - fw >= left) { x = W - 16 - fw; y = above; }
+  else { full = false; w = tw + 28; x = Math.max(left, Math.min(W / 2 - w / 2, right - w)); }
+  box(ctx, x, y, w, 34, 'rgba(10,16,24,0.72)', 8);
+  text(ctx, title, x + 14, y + 18, 24, AMBER);
+  if (full) text(ctx, scope, x + tw + 34, y + 18, 20, INK);
+}
+
 function radioBox(ctx, W, msg, bottom, left = 14) {
   if (!msg) return;
   // bottom left, beside the aircraft: never over the aircraft, the runway or the sky ahead
@@ -359,7 +383,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   let y = miniMap(ctx, W, ms, 12);
   y = windBlock(ctx, W, ms, y + 4);
   y = chips(ctx, W, ms, y);
-  if (y + 72 < info.panelTop - 24) scoreLine(ctx, W, ms, y + 6);
+  if (y + 72 < info.panelTop - 24) { scoreLine(ctx, W, ms, y + 6); y += 68; }
   // in the cockpit the left column runs down to the glare shield, so the radio sits up top
   checklist(ctx, ms, 14, ry + 212, info.view === 'cockpit' ? info.panelTop - 10 : info.panelTop - (info.radio ? 144 : 24));
   if (info.view === 'cockpit') radioBox(ctx, W, info.radio, 236, W / 2 - 195);
@@ -369,5 +393,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   else if (ac.stallWarn) banner(ctx, W, H, 'STALL WARNING', AMBER);
   else if (ac.onSurface && ac.ias > (info.rotateSpeed ?? 27) && ac.controls.throttle > 0.5) banner(ctx, W, H, 'ROTATE', CYAN, 'Hold S or Down to lift the nose');
   else if (!ac.onSurface && ac.agl < 12 && ac.vs < -1.2 && ac.ias < 40) banner(ctx, W, H, 'FLARE', CYAN, 'Ease back and close the throttle');
-  text(ctx, `${info.view === 'cockpit' ? 'COCKPIT' : 'CHASE'} VIEW · C camera · F flaps · Space drop · Esc pause`, W - 16, info.panelTop - 12, 13, 'rgba(255,255,255,0.7)', 'right');
+  const help = `${info.view === 'cockpit' ? 'COCKPIT' : 'CHASE'} VIEW · C camera · F flaps · Space drop · Esc pause`;
+  text(ctx, help, W - 16, info.panelTop - 12, 13, 'rgba(255,255,255,0.7)', 'right');
+  scopeStrip(ctx, W, info.missionCount, info.panelTop - 4, W - 16 - ctx.measureText(help).width - 14, y);
 }
