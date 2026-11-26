@@ -13,6 +13,11 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const repoDir = fileURLToPath(new URL('.', import.meta.url));
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+// Refuse to hand in a half-copied repository: the page and its entry module must be there.
+for (const need of ['game/index.html', 'game/src/main.js']) {
+  if (!existsSync(join(repoDir, need))) throw new Error(`Tidewing hand-in: ${need} is missing`);
+}
+
 mkdirSync(join(outDir, 'screenshots'), { recursive: true });
 cpSync(join(repoDir, 'game'), join(outDir, 'game'), { recursive: true });
 const shots = join(repoDir, 'screenshots');
