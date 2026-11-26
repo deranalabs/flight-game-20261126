@@ -94,15 +94,18 @@ function toBriefing(id) {
   game.selected = id;
   game.mode = 'brief';
   const preview = startMission(def, game.career, 1);
-  showBriefing(def, preview.objectives.map((o) => o.label(preview)), game.career, () => startFlight(def), toHangar);
+  showBriefing(def, preview.objectives.map((o) => o.label(preview)), game.career, (fuel) => startFlight(def, fuel), toHangar);
 }
 
-function startFlight(def) {
+function startFlight(def, fuel = game.fuelChoice) {
   sound.start();
   clearScreens();
   game.def = def;
-  game.ms = startMission(def, game.career, 1);
+  game.fuelChoice = fuel;
+  game.ms = startMission(def, game.career, 1, { fuel });
   ensureWorld(def.timeOfDay, def.weather);
+  game.world.effects.clearCrash();
+  game.crashAt = null;
   input.syncFrom(game.ms.ac);
   rig.init = false;
   game.autopilot = null;
@@ -183,7 +186,11 @@ function flyFrame(dt) {
   if (ms.extra.flashAt && ms.extra.flashAt !== game.lastFlash) { game.lastFlash = ms.extra.flashAt; sound.event('thunder'); }
   if (ms.status !== 'flying') {
     if (!game.endAt) {
-      game.endAt = game.t + (ms.status === 'done' ? 3 : 3.5);
+      if (ac.crashed) {
+        game.crashAt = game.t;
+        game.world.effects.crashBurst(ac.pos, ms.env.surfaceAt(ac.pos.x, ac.pos.z).kind, game.t);
+      }
+      game.endAt = game.t + (ms.status === 'done' ? 3 : ac.crashed ? 5 : 3.5);
       game.banner = ms.status === 'done'
         ? { text: 'MISSION COMPLETE', color: '#7ee08f', sub: ms.def.title, until: game.endAt }
         : { text: ms.ac.crashed ? 'CRASHED' : 'MISSION FAILED', color: '#ff6b5a', sub: ms.failReason, until: game.endAt };
@@ -207,16 +214,24 @@ function renderFlight(ms, dt, opts = {}) {
   model.visible = true;
   model.position.set(ac.pos.x, ac.pos.y, ac.pos.z);
   model.quaternion.set(ac.q.x, ac.q.y, ac.q.z, ac.q.w);
-  animateSeaplane(model, ac, game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit', night: w.time.windows > 0.6 });
+  const wrecked = !!ac.crashed && game.crashAt !== null && game.crashAt !== undefined;
+  if (wrecked) {
+    // the wreck settles: rolled onto a wing, nose down, and on water it slowly sinks
+    const age = Math.min(1, (game.t - game.crashAt) / 1.2);
+    model.rotateZ(-0.7 * age);
+    model.rotateX(-0.35 * age);
+    if (ms.env.surfaceAt(ac.pos.x, ac.pos.z).kind === 'water') model.position.y -= Math.min(1.6, (game.t - game.crashAt) * 0.35);
+  }
+  animateSeaplane(model, ac, game.t, { dt, lightsOn: !wrecked, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit' && !wrecked, night: w.time.windows > 0.6 });
   const wind = ms.env.wind.at(ac.pos, ac.t);
   const wl = Math.hypot(wind.x, wind.z) || 1;
   w.markers.update(ms, game.t, { x: wind.x / wl * 0.4, z: wind.z / wl * 0.4 });
   w.props.userData.lighthouse.userData.tick(game.t, lighthouseOn(ms));
   w.props.userData.smoke.userData.tick(game.t, wind.x / wl, wind.z / wl);
   w.water.userData.tick(game.t);
-  rig.mode = game.view;
+  rig.mode = wrecked ? 'orbit' : game.view;
   rig.look = input.look;
-  rig.update(ac, dt, opts.camera ?? {});
+  rig.update(ac, dt, wrecked ? { t: (game.t - game.crashAt) * 3, radius: 34 } : opts.camera ?? {});
   w.effects.update(dt, game.t, camera, ac, ms.extra.flashAt);
   renderer.render(w.scene, camera);
   const W = window.innerWidth;

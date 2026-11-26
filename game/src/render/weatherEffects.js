@@ -36,7 +36,54 @@ export function makeWeatherEffects(scene, weather, time) {
   const drops = Array.from({ length: sprayN }, () => ({ x: 0, y: -100, z: 0, vx: 0, vy: 0, vz: 0, life: 0 }));
   let nextDrop = 0;
 
+  // a crash: a tall white splash on water or a dust burst on land, then dark smoke
+  const wreckSmoke = new THREE.Group();
+  const smokeTex = (() => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    const c = cv.getContext('2d');
+    const g = c.createRadialGradient(32, 32, 2, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(cv);
+  })();
+  const puffs = Array.from({ length: 24 }, (_, i) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, color: 0x3a3632, transparent: true, depthWrite: false, opacity: 0 }));
+    s.userData.phase = i / 24;
+    wreckSmoke.add(s);
+    return s;
+  });
+  wreckSmoke.visible = false;
+  scene.add(wreckSmoke);
+  let crash = null;
+
+  /** Start the crash effects at a point; kind is 'water' or anything else for land. */
+  function crashBurst(pos, kind, t) {
+    crash = { x: pos.x, y: Math.max(0, pos.y - 1.7), z: pos.z, kind, t };
+    wreckSmoke.position.set(crash.x, crash.y, crash.z);
+    wreckSmoke.visible = true;
+    for (let i = 0; i < sprayN; i++) {
+      const d = drops[i];
+      const a = rnd() * Math.PI * 2;
+      const sp = 4 + rnd() * 10;
+      d.x = crash.x; d.y = crash.y + 0.5; d.z = crash.z;
+      d.vx = Math.cos(a) * sp; d.vz = Math.sin(a) * sp; d.vy = 6 + rnd() * (kind === 'water' ? 16 : 8);
+      d.life = 2.5;
+    }
+    spray.material.color.setHex(kind === 'water' ? 0xffffff : 0x8a7a62);
+  }
+
   function update(dt, t, camera, ac, flashAt) {
+    if (crash) {
+      const age = t - crash.t;
+      for (const s of puffs) {
+        const p = (s.userData.phase + age * 0.07) % 1;
+        s.position.set(p * 18, 2 + p * 90, p * 9);
+        s.scale.setScalar(8 + p * 40);
+        s.material.opacity = Math.min(1, age / 1.5) * 0.65 * (1 - p);
+      }
+    }
     if (rain) {
       rain.position.copy(camera.position);
       rain.position.y -= (t * 60) % 5;
@@ -72,5 +119,5 @@ export function makeWeatherEffects(scene, weather, time) {
     }
     sprayGeo.attributes.position.needsUpdate = true;
   }
-  return { update };
+  return { update, crashBurst, clearCrash() { crash = null; wreckSmoke.visible = false; spray.material.color.setHex(0xffffff); } };
 }

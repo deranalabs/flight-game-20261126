@@ -20,6 +20,7 @@ export default {
   seed: 71,
   start: (k) => k.lineUp('halyard', 180),
   fuel: 0.16,
+  fuelLocked: 'The tanker boat is late: you leave with what is in the tanks.',
   pay: 1300,
   parTime: 600,
   build(ms, k) {

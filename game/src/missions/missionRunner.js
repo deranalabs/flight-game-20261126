@@ -16,12 +16,14 @@ import { KIT } from './missionKit.js';
  * Begin a mission. career: { upgrades: [], damage: {...} } carries the hangar state in;
  * a mission may lend an upgrade (the fire service tank) for its own flight.
  */
-export function startMission(def, career = {}, seed = 1) {
+export function startMission(def, career = {}, seed = 1, opts = {}) {
   const upgrades = [...(career.upgrades ?? []), ...(def.lends ?? [])];
   const spec = buildSpec(upgrades);
   const env = makeFlightEnv(def.weather, def.windFrom, def.seed ?? seed);
   const where = typeof def.start === 'function' ? def.start(KIT) : def.start;
-  const start = { ...where, fuel: def.fuel ?? 1, payloadKg: def.payloadKg ?? 0, damage: { ...(career.damage ?? {}) } };
+  // the pilot may load more or less fuel than the job suggests, unless the job fixes it
+  const fuel = !def.fuelLocked && opts.fuel ? opts.fuel : def.fuel ?? 1;
+  const start = { ...where, fuel, payloadKg: def.payloadKg ?? 0, damage: { ...(career.damage ?? {}) } };
   if (start.onSurface) start.y = 0;
   const ac = makeAircraft(spec, start);
   if (start.onSurface) settleOnSurface(ac, env);
@@ -41,6 +43,8 @@ export function startMission(def, career = {}, seed = 1) {
     splashes: [],
     extra: {},
     warned: {},
+    trace: [], // every half second: time, height above ground, airspeed, vertical speed, bank, events
+    marks: [],
     ringNo(o) {
       const rings = ms.objectives.filter((x) => x.kind === 'ring');
       return `${rings.indexOf(o) + 1} of ${rings.length}`;
@@ -94,7 +98,12 @@ export function stepMission(ms, actions = {}, opts = {}) {
   ms.t += dt;
   if (ms.def.update) ms.def.update(ms, dt, ctx);
 
+  if (ms.t - (ms.lastTrace ?? -1) >= 0.5 && ms.trace.length < 4000) {
+    ms.lastTrace = ms.t;
+    ms.trace.push([Math.round(ms.t * 10) / 10, Math.round(Math.max(0, ac.agl)), Math.round(ac.ias * 10) / 10, Math.round(ac.vs * 10) / 10, Math.round(ac.bank)]);
+  }
   for (const e of ac.events) {
+    if (['touchdown', 'bounce', 'crash', 'liftoff', 'stall'].includes(e.type)) ms.marks.push({ t: ms.t, type: e.type, fpm: e.fpm });
     if (e.type === 'crash') {
       ms.say('crash');
       ms.fail(e.reason);
@@ -105,6 +114,7 @@ export function stepMission(ms, actions = {}, opts = {}) {
 
   if (obj && obj.update(ctx)) {
     obj.doneAt = ms.t;
+    ms.marks.push({ t: ms.t, type: 'objective', n: ms.index + 1 });
     ms.index += 1;
     const lines = ms.def.radio?.[`obj${ms.index}`];
     if (lines) for (const [who, text] of lines) ms.radio.line(who, text, ms.t);
@@ -192,6 +202,7 @@ export function missionResult(ms) {
     landing: bestLanding ? bestLanding.letter : '-', landings, notes,
     damageTaken: Math.round(dmgTaken), fuelUsed: Math.round(fuelUsed),
     crashed: !!ac.crashed, reason: ms.failReason,
+    trace: ms.trace, marks: ms.marks, damageLog: ac.damage.log.slice(-6),
   };
 }
 

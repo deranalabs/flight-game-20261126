@@ -3,7 +3,9 @@
 // debrief with stars and pay, pause and the controls card. Plain DOM, no framework.
 
 import { MISSIONS } from '../missions/index.js';
-import { UPGRADES } from '../aircraft/ternSpec.js';
+import { UPGRADES, buildSpec, stallSpeed } from '../aircraft/ternSpec.js';
+import { burnRate, FUEL_KG_PER_L } from '../systems/fuelTank.js';
+import { flightTraceSvg } from './flightTrace.js';
 import { CAST } from '../characters/radioCast.js';
 import { WEATHER } from '../flight/windField.js';
 import { timeOf } from '../render/timeOfDay.js';
@@ -112,10 +114,24 @@ export function showHangar(career, castStates, h) {
   return el;
 }
 
+/**
+ * The briefing: story, conditions, objectives, the Tern's state and the fuel load. More fuel
+ * is more range and more weight (a longer takeoff, a faster stall); onFly gets the choice.
+ */
 export function showBriefing(def, objectives, career, onFly, onBack) {
   const c = CAST[def.client];
   const w = WEATHER[def.weather];
   const t = timeOf(def.timeOfDay);
+  const spec = buildSpec([...career.upgrades, ...(def.lends ?? [])]);
+  const loads = def.fuelLocked ? [def.fuel] : [...new Set([0.35, 0.55, def.fuel ?? 1, 0.8, 1])].sort((a, b) => a - b);
+  let chosen = def.fuel ?? 1;
+  const fuelLine = (f) => {
+    const litres = spec.fuelCapacity * f;
+    const mass = spec.emptyMass + spec.pilotMass + (def.payloadKg ?? 0) + litres * FUEL_KG_PER_L;
+    const cruise = burnRate(spec, 0.6, true) * spec.burnTimeScale;
+    const vs = stallSpeed(spec, mass, 1) * 1.944;
+    return `${Math.round(litres)} L · ${Math.round(mass).toLocaleString('en-US')} kg · about ${Math.round((litres / cruise) * 60)} min at cruise · stall ${Math.round(vs)} kt with full flap · bill ${Math.round(litres * FUEL_PRICE)} sh if burnt`;
+  };
   const el = mount(`<div class="brief">
     <div style="display:flex;gap:14px;align-items:center"><div class="face" style="width:58px;height:58px;font-size:22px;background:${c.color}">${esc(initials(c.name))}</div>
       <div><div style="color:var(--amber);font-weight:800">MISSION ${def.order} · ${esc(def.place.toUpperCase())}</div><h1>${esc(def.title)}</h1></div></div>
@@ -125,18 +141,30 @@ export function showBriefing(def, objectives, career, onFly, onBack) {
     <div style="color:var(--amber);font-weight:800">OBJECTIVES</div>
     <ol>${objectives.map((o) => `<li>${esc(o)}</li>`).join('')}</ol>
     <div style="color:#b7c0c8">Your Tern: ${PARTS.map((p) => `${PART_NAMES[p]} ${Math.round(career.damage[p])}%`).join(' · ')}${def.lends ? ' · fire service tank fitted for this job' : ''}</div>
+    <div style="color:var(--amber);font-weight:800">FUEL LOAD</div>
+    <div class="row" style="justify-content:flex-start" id="fuel">${loads.map((f) => `<button class="${f === chosen ? '' : 'ghost'}" data-f="${f}" ${def.fuelLocked ? 'disabled' : ''}>${Math.round(f * 100)}%</button>`).join('')}</div>
+    <div id="fuelLine" style="color:#b7c0c8">${def.fuelLocked ? esc(def.fuelLocked) + ' ' : ''}${fuelLine(chosen)}</div>
     <div class="row"><button class="ghost" id="back">Back to hangar</button><button id="fly">Fly</button></div></div>`);
-  el.querySelector('#fly').onclick = onFly;
+  el.querySelectorAll('#fuel button').forEach((b) => {
+    b.onclick = () => {
+      chosen = Number(b.dataset.f);
+      el.querySelectorAll('#fuel button').forEach((o) => { o.className = Number(o.dataset.f) === chosen ? '' : 'ghost'; });
+      el.querySelector('#fuelLine').textContent = fuelLine(chosen);
+    };
+  });
+  el.querySelector('#fly').onclick = () => onFly(chosen);
   el.querySelector('#back').onclick = onBack;
 }
 
 export function showDebrief(def, result, fuelBill, h) {
   const lands = result.landings.map((l) => `<tr><td>${esc(l.where)}</td><td>${l.fpm} ft/min</td><td>${l.across === null ? '-' : `${l.across} m`}</td><td>${l.bounces}</td><td class="${l.letter === 'A' ? 'g' : l.letter === 'F' ? 'r' : 'a'}">${l.letter}</td></tr>`).join('');
+  const hurts = (result.damageLog ?? []).filter((d) => d.amount >= 1).map((d) => `${PART_NAMES[d.part]} -${Math.round(d.amount)}%: ${d.cause}`);
   const el = mount(`<div class="brief">
     <div style="color:var(--amber);font-weight:800">DEBRIEF · MISSION ${def.order}</div>
     <h1>${result.done ? esc(def.title) + ': complete' : esc(def.title) + ': failed'}</h1>
     <div class="big-stars">${stars(result.stars)}</div>
-    <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
+    <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join('')}${hurts.map((n) => `<li style="color:#ffb3a6">${esc(n)}</li>`).join('')}</ul>
+    ${flightTraceSvg(result.trace, result.marks)}
     ${lands ? `<table><tr><th>Landing</th><th>Sink</th><th>Off centre</th><th>Bounces</th><th>Grade</th></tr>${lands}</table>` : ''}
     <div class="meta"><span class="chip">Time <b>${fmtTime(result.time)}</b></span><span class="chip">Pay <b>${result.pay} sh</b></span>
       <span class="chip">Fuel bill <b>${fuelBill} sh</b></span><span class="chip">Damage taken <b>${result.damageTaken}</b></span></div>
