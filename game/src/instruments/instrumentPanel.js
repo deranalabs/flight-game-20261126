@@ -383,9 +383,9 @@ export function drawInstrumentPanel(ctx, W, H, ac, mode, extra = {}) {
     ctx.fillStyle = '#16191c';
     ctx.beginPath(); ctx.moveTo(0, py + 10); ctx.quadraticCurveTo(W / 2, py - 40, W, py + 10); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
     panelBackground(ctx, W * 0.03, py + 12, W * 0.94, ph - 12, true);
-    const r1 = Math.min(ph * 0.24, W * 0.062);
-    const row1 = py + 18 + r1 * 1.15;
-    const row2 = row1 + r1 * 2.3;
+    const r1 = Math.min(ph * 0.2, W * 0.06);
+    const row1 = py + 20 + r1 * 1.12;
+    const row2 = row1 + r1 * 2.25;
     const xs = [0.17, 0.32, 0.47, 0.62].map((f) => W * f);
     airspeed(ctx, xs[0], row1, r1, ac);
     attitude(ctx, xs[1], row1, r1, ac);

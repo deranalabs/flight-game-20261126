@@ -2,16 +2,6 @@
 // barometer and a storm on top of it. You leave with 16 percent fuel into a headwind.
 // The choice: press on, or put down at the Saltmoor fuel barge (time and pay lost).
 
-import { takeoff, land, holdStill } from './objectives.js';
-import { lineUp } from './startPoints.js';
-import { RUNWAYS, runwayFrame } from '../terrain/islandLayout.js';
-import { refuel, enduranceMinutes } from '../systems/fuelTank.js';
-import { hurt } from '../systems/damageModel.js';
-import { flyLanding, approachGate, flyTo } from '../flight/autopilot.js';
-import { seededRandom } from '../util/noise.js';
-
-const BARGE = RUNWAYS.saltmoorLane;
-
 export default {
   id: 'stormCrossing',
   order: 7,
@@ -28,28 +18,30 @@ export default {
   weather: 'storm',
   windFrom: 135,
   seed: 71,
-  start: lineUp('halyard', 180),
+  start: (k) => k.lineUp('halyard', 180),
   fuel: 0.16,
   pay: 1300,
   parTime: 600,
-  build(ms) {
+  build(ms, k) {
     return [
-      takeoff('Take off into the squall'),
-      land('skerryLane', {}),
-      holdStill('skerryLane', 6, 'Handing over the barometer parts', () => ms.radio.setState('junie', 'Station back on the air')),
+      k.takeoff('Take off into the squall'),
+      k.land('skerryLane', {}),
+      k.holdStill('skerryLane', 6, 'Handing over the barometer parts', () => ms.radio.setState('junie', 'Station back on the air')),
     ];
   },
   setup(ms) {
     ms.extra.refuelled = false;
-    ms.extra.rng = seededRandom(99);
+    ms.extra.rng = ms.kit.seededRandom(99);
     ms.extra.nextStrike = 40;
     ms.radio.setState('junie', 'Barometer broken');
   },
   update(ms, dt) {
     const ac = ms.ac;
+    const { refuel, hurt, enduranceMinutes } = ms.kit;
+    const BARGE = ms.kit.RUNWAYS.saltmoorLane;
     // the side option: stop at the barge
     if (!ms.extra.refuelled && ac.onSurface && ac.gs < 4) {
-      const fr = runwayFrame(BARGE, ac.pos.x, ac.pos.z);
+      const fr = ms.kit.runwayFrame(BARGE, ac.pos.x, ac.pos.z);
       if (Math.abs(fr.along) < BARGE.length / 2 + 200 && Math.abs(fr.across) < BARGE.width / 2 + 120) {
         ms.extra.bargeTime = (ms.extra.bargeTime ?? 0) + dt;
         if (ms.extra.bargeTime > 7) {
@@ -81,6 +73,8 @@ export default {
   botFly(ms, ctx) {
     if (ms.extra.refuelled || ms.index < 1) return false;
     const ac = ms.ac;
+    const { flyLanding, approachGate, flyTo } = ms.kit;
+    const BARGE = ms.kit.RUNWAYS.saltmoorLane;
     const st = ms.extra.botBarge ?? (ms.extra.botBarge = { phase: 'gate' });
     if (st.phase === 'gate') {
       const g = approachGate(BARGE, 180, 2200);

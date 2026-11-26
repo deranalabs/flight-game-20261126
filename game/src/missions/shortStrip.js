@@ -2,9 +2,6 @@
 // the spine of Tallow Island: slow, full flap, touch down on the numbers, brake hard,
 // unload, and get out again before the end of the strip.
 
-import { takeoff, land, holdStill } from './objectives.js';
-import { lineUp } from './startPoints.js';
-
 export default {
   id: 'shortStrip',
   order: 4,
@@ -21,21 +18,21 @@ export default {
   weather: 'breezy',
   windFrom: 170,
   seed: 41,
-  start: lineUp('halyard', 180),
+  start: (k) => k.lineUp('halyard', 180),
   fuel: 0.6,
   payloadKg: 220,
   pay: 780,
   parTime: 600,
-  build(ms) {
+  build(ms, k) {
     return [
-      takeoff('Take off from Port Halyard'),
-      land('ridgeback', { bot: { aim: 50, glideDeg: 5, back: 2400 } }),
-      holdStill('ridgeback', 6, 'Unloading the pumps', () => {
+      k.takeoff('Take off from Port Halyard'),
+      k.land('ridgeback', { bot: { aim: 50, glideDeg: 5, back: 2400 } }),
+      k.holdStill('ridgeback', 6, 'Unloading the pumps', () => {
         ms.ac.payloadKg = Math.max(0, ms.ac.payloadKg - 220);
         ms.radio.setState('oren', 'Pumps on the ridge');
       }),
-      takeoff('Turn round and take off downhill from Ridgeback', 0),
-      land('halyard', {}),
+      k.takeoff('Turn round and take off downhill from Ridgeback', 0),
+      k.land('halyard', {}),
     ];
   },
   update(ms) {

@@ -2,12 +2,6 @@
 // Lagoon to fill the borrowed 800 L belly tank, fly low over a fire and release. Fires
 // you leave alone grow back; smoke and heat over them are rough on the engine.
 
-import { scoop, bombFire, landAny, fillScoopTank } from './objectives.js';
-import { lineUp } from './startPoints.js';
-import { FIRE_SITES } from '../terrain/islandLayout.js';
-import { groundHeight } from '../terrain/heightmap.js';
-import { hurt } from '../systems/damageModel.js';
-
 export default {
   id: 'waterBomber',
   order: 5,
@@ -25,31 +19,32 @@ export default {
   windFrom: 300,
   seed: 53,
   lends: ['scoopTank'],
-  start: lineUp('mirrorLagoon', 0, 0),
+  start: (k) => k.lineUp('mirrorLagoon', 0, 0),
   fuel: 0.75,
   pay: 1100,
   parTime: 720,
-  build(ms) {
-    ms.extra.fires = FIRE_SITES.map((f) => ({ ...f, r: 75, intensity: 0.9 }));
+  build(ms, k) {
+    ms.extra.fires = k.FIRE_SITES.map((f) => ({ ...f, r: 75, intensity: 0.9 }));
     const [north, mid, south] = ms.extra.fires;
     const objs = [];
     for (const fire of [south, mid, north]) {
-      objs.push(scoop('mirrorLagoon', 800));
-      objs.push(bombFire(fire, fire.name));
+      objs.push(k.scoop('mirrorLagoon', 800));
+      objs.push(k.bombFire(fire, fire.name));
     }
-    objs.push(landAny(['mirrorLagoon', 'halyardHarbour', 'halyard'], 'Land at the lagoon, the harbour or Port Halyard'));
+    objs.push(k.landAny(['mirrorLagoon', 'halyardHarbour', 'halyard'], 'Land at the lagoon, the harbour or Port Halyard'));
     return objs;
   },
   update(ms, dt) {
     const ac = ms.ac;
-    fillScoopTank(ac, dt);
+    const { groundHeight, hurt } = ms.kit;
+    ms.kit.fillScoopTank(ac, dt);
     for (const f of ms.extra.fires) {
       if (f.intensity > 0.05) f.intensity = Math.min(1, f.intensity + 0.0022 * dt);
       else f.intensity = 0;
       // flying through the smoke column low: heat and grit
       const d = Math.hypot(ac.pos.x - f.x, ac.pos.z - f.z);
-      const agl = ac.pos.y - Math.max(0, groundHeight(f.x, f.z));
-      if (f.intensity > 0.1 && d < f.r * 0.8 && agl < 40) hurt(ac.damage, 'engine', 2.5 * dt * f.intensity, 'flew through the flames', ms.t);
+      const agl = ac.pos.y - Math.max(0, groundHeight(ac.pos.x, ac.pos.z));
+      if (f.intensity > 0.1 && d < f.r * 0.8 && agl < 22) hurt(ac.damage, 'engine', 2.5 * dt * f.intensity, 'flew through the flames', ms.t);
     }
     const lit = ms.extra.fires.filter((f) => f.intensity > 0.05).length;
     ms.radio.setState('oren', lit === 0 ? 'Fires out' : `${lit} fire${lit > 1 ? 's' : ''} burning`);

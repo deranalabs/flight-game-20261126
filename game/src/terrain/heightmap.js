@@ -76,7 +76,7 @@ export function groundHeight(x, z) {
     if (w > 0) h = lerp(h, p.elev, w);
   }
   for (const rw of LAND_RUNWAYS) {
-    const w = rectWeight(rw.x, rw.z, rw.hdg, rw.length / 2 + 40, rw.width / 2 + 25, PAD_MARGIN, x, z);
+    const w = rectWeight(rw.x, rw.z, rw.hdg, rw.length / 2 + 90, rw.width / 2 + 70, PAD_MARGIN, x, z);
     if (w > 0) h = lerp(h, rw.elev, w);
   }
   for (const ln of LANES) {

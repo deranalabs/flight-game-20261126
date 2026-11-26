@@ -1,13 +1,6 @@
 // Mission 1, First Light Mail Run: two mail sacks dropped on village squares from low
 // and slow, then the last sack carried by hand onto the Saltmoor water lane.
 
-import { takeoff, drop, land } from './objectives.js';
-import { lineUp } from './startPoints.js';
-import { VILLAGES } from '../terrain/islandLayout.js';
-
-const town = VILLAGES.find((v) => v.id === 'halyardTown');
-const salt = VILLAGES.find((v) => v.id === 'saltmoorTown');
-
 export default {
   id: 'mailRun',
   order: 1,
@@ -24,18 +17,20 @@ export default {
   weather: 'breezy',
   windFrom: 260,
   seed: 11,
-  start: lineUp('halyard', 180),
+  start: (k) => k.lineUp('halyard', 180),
   fuel: 0.7,
   payloadKg: 60,
   pay: 520,
   parTime: 360,
   missAllowance: 1,
-  build() {
+  build(ms, k) {
+    const town = k.VILLAGES.find((v) => v.id === 'halyardTown');
+    const salt = k.VILLAGES.find((v) => v.id === 'saltmoorTown');
     return [
-      takeoff('Take off from Port Halyard, runway 18'),
-      drop(town.x, town.z, 55, 'Halyard Town square'),
-      drop(salt.x, salt.z, 55, 'Saltmoor square'),
-      land('saltmoorLane', {}),
+      k.takeoff('Take off from Port Halyard, runway 18'),
+      k.drop(town.x, town.z, 55, 'Halyard Town square'),
+      k.drop(salt.x, salt.z, 55, 'Saltmoor square'),
+      k.land('saltmoorLane', {}),
     ];
   },
   radio: {

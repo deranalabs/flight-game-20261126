@@ -2,7 +2,7 @@
 // fires with their smoke, falling sacks and water, splashes, and a beacon on the next goal.
 
 import * as THREE from 'three';
-import { glowSprite } from './islandProps.js';
+import { glowSprite } from './glowSprite.js';
 import { groundHeight } from '../terrain/heightmap.js';
 
 function numberTexture(text, color) {
@@ -100,9 +100,9 @@ function smokeColumn(color, count, height) {
       const p = (s.userData.phase + t * 0.08) % 1;
       const h = p * height * scale;
       s.position.set(wx * h * 0.6 + Math.sin(p * 9 + s.userData.phase * 20) * 3, h, wz * h * 0.6);
-      const size = (6 + p * 40) * scale;
+      const size = (6 + p * 40) * scale * (g.userData.width ?? 1);
       s.scale.set(size, size, 1);
-      s.material.opacity = 0.55 * (1 - p);
+      s.material.opacity = 0.6 * (1 - p);
     }
   };
   return g;
@@ -122,7 +122,8 @@ function buildFire(o) {
   }
   const scorch = new THREE.Mesh(new THREE.CircleGeometry(o.r, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x241510, transparent: true, opacity: 0.7, depthWrite: false }));
   scorch.position.y = 1;
-  const smoke = smokeColumn(0x5a5550, 26, 420);
+  const smoke = smokeColumn(0x4a4440, 34, 520);
+  smoke.userData.width = 2.4;
   g.add(scorch, smoke);
   const light = new THREE.PointLight(0xff7020, 60, 500, 1.2);
   light.position.y = 25;
@@ -171,7 +172,7 @@ export function makeMarkerLayer(scene, night) {
         const k = Math.max(0.05, f.intensity);
         m.userData.flames.forEach((s, j) => {
           const flick = 0.75 + 0.25 * Math.sin(t * 9 + j * 1.7);
-          s.scale.setScalar((18 + j % 4 * 6) * k * flick * (f.intensity > 0.02 ? 1 : 0));
+          s.scale.setScalar((34 + (j % 4) * 12) * k * flick * (f.intensity > 0.02 ? 1 : 0));
           s.position.y = s.userData.base.y + Math.sin(t * 5 + j) * 2 * k;
         });
         m.userData.light.intensity = 60 * k;

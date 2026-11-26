@@ -50,6 +50,12 @@ export function buildWorld(timeId, weatherId, seed = 1) {
 
   const plane = buildSeaplane();
   scene.add(plane);
+  if (time.windows > 0.6) {
+    // after dark the cabin and nav lights wash the airframe so the Tern still reads
+    const wash = new THREE.PointLight(0xffe2b0, 90, 30, 1.6);
+    wash.position.set(0, 4, 2);
+    plane.add(wash);
+  }
   const markers = makeMarkerLayer(scene, time.windows > 0.6);
   const effects = makeWeatherEffects(scene, weather, time);
   return { scene, sky, water, props, plane, markers, effects, time, weather, sun };

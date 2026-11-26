@@ -275,21 +275,21 @@ function chips(ctx, W, ms, y) {
   return y + rows.length * 40;
 }
 
-function radioBox(ctx, W, msg, bottom) {
+function radioBox(ctx, W, msg, bottom, left = 14) {
   if (!msg) return;
-  const w = Math.min(600, W * 0.47);
-  const h = 74;
-  const x = 14;
-  const y = bottom - h - 12;
+  // bottom left, beside the aircraft: never over the aircraft, the runway or the sky ahead
+  const w = Math.min(390, W * 0.3);
+  const h = 116;
+  const x = left;
+  const y = bottom - h - 14;
   box(ctx, x, y, w, h, 'rgba(8,12,18,0.78)');
   ctx.fillStyle = msg.color;
-  ctx.beginPath(); ctx.arc(x + 38, y + h / 2, 25, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 30, y + 30, 20, 0, Math.PI * 2); ctx.fill();
   const initials = msg.name.split(' ').filter((p) => p[0] && p[0] === p[0].toUpperCase() && !p.endsWith('.')).map((p) => p[0]).join('').slice(0, 2);
-  text(ctx, initials, x + 38, y + h / 2 + 1, 20, '#101418', 'center');
-  text(ctx, `${msg.name.toUpperCase()}`, x + 76, y + 18, 16, msg.color);
-  text(ctx, msg.role, x + 76 + ctx.measureText(msg.name.toUpperCase()).width + 34, y + 18, 13, '#9aa4ad');
-  text(ctx, '((·)) RADIO', x + w - 14, y + 18, 12, '#9aa4ad', 'right');
-  wrap(ctx, msg.text, x + 76, y + 42, w - 92, 17, 2, INK);
+  text(ctx, initials, x + 30, y + 31, 17, '#101418', 'center');
+  text(ctx, `${msg.name.toUpperCase()}`, x + 60, y + 20, 16, msg.color);
+  text(ctx, `${msg.role} · RADIO`, x + 60, y + 40, 13, '#9aa4ad');
+  wrap(ctx, msg.text, x + 12, y + 62, w - 24, 15, 3, INK);
 }
 
 function banner(ctx, W, H, s, color, sub) {
@@ -322,7 +322,9 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   let y = miniMap(ctx, W, ms, 12);
   y = windBlock(ctx, W, ms, y + 4);
   chips(ctx, W, ms, y);
-  radioBox(ctx, W, info.radio, info.panelTop);
+  // in the cockpit the left column runs down to the glare shield, so the radio sits up top
+  if (info.view === 'cockpit') radioBox(ctx, W, info.radio, 236, W / 2 - 195);
+  else radioBox(ctx, W, info.radio, info.panelTop);
   if (info.banner) banner(ctx, W, H, info.banner.text, info.banner.color, info.banner.sub);
   else if (ac.stalled) banner(ctx, W, H, 'STALL', '#ff4d3d', 'Nose down, wings level, power on');
   else if (ac.stallWarn) banner(ctx, W, H, 'STALL WARNING', AMBER);

@@ -4,7 +4,7 @@
 // navigation lights, a strobe, a landing light and the TW-07 registration.
 
 import * as THREE from 'three';
-import { glowSprite } from '../render/islandProps.js';
+import { glowSprite } from '../render/glowSprite.js';
 
 const mat = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, flatShading: true, ...extra });
 const CREAM = 0xf1e7cf;
@@ -208,8 +208,8 @@ export function buildSeaplane() {
 
   // lights: red port tip, green starboard tip, white tail, red strobe on the fin
   const lights = {
-    port: glowSprite(0xff2a2a, 2.2), starboard: glowSprite(0x22ff55, 2.2),
-    tail: glowSprite(0xffffff, 1.6), strobe: glowSprite(0xffffff, 5),
+    port: glowSprite(0xff2a2a, 1.3), starboard: glowSprite(0x22ff55, 1.3),
+    tail: glowSprite(0xffffff, 0.7), strobe: glowSprite(0xffffff, 3),
   };
   lights.port.position.set(-span / 2, 0.9, -1.0);
   lights.starboard.position.set(span / 2, 0.9, -1.0);
@@ -224,7 +224,9 @@ export function buildSeaplane() {
   landingGlow.position.set(-2.0, 0.8, -1.95);
   body.add(landingGlow);
 
-  root.userData = { prop, disc, ailerons, flaps, elevator, rudder, lights, landing, landingGlow };
+  // from the pilot's seat the cabin shell and glass would fill the view: hide them there
+  const cabinParts = [cabin, tailcone, belly, cheat, wind, roofFair, pilot, cowl, cowlRing, spinner, ...body.children.filter((c) => c.geometry && c.geometry.type === 'BoxGeometry' && c.position.y > 0.3 && Math.abs(c.position.x) > 0.6)];
+  root.userData = { prop, disc, ailerons, flaps, elevator, rudder, lights, landing, landingGlow, cabinParts };
   return root;
 }
 
@@ -242,8 +244,9 @@ export function animateSeaplane(model, ac, t, opts = {}) {
   u.rudder.rotation.y = c.rudder * 0.45;
   const spin = (ac.engine.rpm / 60) * Math.PI * 2;
   u.prop.rotation.z += spin * (opts.dt ?? 1 / 60) * 0.12;
-  u.disc.material.opacity = Math.min(0.32, ac.engine.rpm / 6000);
-  u.prop.visible = ac.engine.rpm < 1600 || opts.still;
+  u.disc.material.opacity = Math.min(opts.cockpit ? 0.1 : 0.32, ac.engine.rpm / 6000);
+  // a running prop is a blur: blades show only when turning slowly or stopped
+  u.prop.visible = ac.engine.rpm < 500 || !!opts.still;
   if (opts.still) u.prop.rotation.z = 0.4;
   const on = opts.lightsOn ?? true;
   u.lights.port.visible = on;
@@ -252,4 +255,5 @@ export function animateSeaplane(model, ac, t, opts = {}) {
   u.lights.strobe.visible = on && (t % 1.2) < 0.08;
   u.landing.intensity = opts.landingLight ? 600 : 0;
   u.landingGlow.visible = !!opts.landingLight;
+  for (const p of u.cabinParts) p.visible = !opts.cockpit;
 }

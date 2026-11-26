@@ -7,7 +7,7 @@
 
 import { missionById, MISSIONS } from '../missions/index.js';
 import { startMission, stepMission, currentObjective, missionResult } from '../missions/missionRunner.js';
-import { newCareer, recordFlight, buyUpgrade } from '../hangar/careerSave.js';
+import { newCareer, recordFlight, buyUpgrade, repairAll } from '../hangar/careerSave.js';
 
 function runUntil(ms, pred, maxSeconds = 1500) {
   for (let i = 0; i < maxSeconds * 60 && ms.status === 'flying'; i++) {
@@ -25,15 +25,16 @@ export const SHOTS = {
     runUntil(ms, (m) => {
       const o = currentObjective(m);
       // lined up on the ring with runway 09 beyond it
-      return m.index === 7 && o && distTo(m, o.x, o.z) < 330 && Math.abs(m.ac.hdg - 90) < 10 && Math.abs(m.ac.bank) < 8;
+      const off = Math.abs(((m.ac.hdg - o.hdg + 540) % 360) - 180);
+      return m.index === 7 && o && distTo(m, o.x, o.z) < 330 && off < 10 && Math.abs(m.ac.bank) < 8;
     });
-    return { ms, view: 'chase', camera: { distance: 22, height: 8.5, side: 5, lookAhead: 80, lookDown: -6, fov: 64 } };
+    return { ms, view: 'chase', camera: { distance: 19, height: 7.5, side: 4, lookAhead: 40, lookDown: -10, fov: 64 } };
   },
   cockpit() {
     const ms = startMission(missionById('waterBomber'), {}, 1);
     runUntil(ms, (m) => {
       const o = currentObjective(m);
-      return o && o.kind === 'fire' && o.bot && o.bot.phase === 'pass' && m.ac.waterKg > 700 && distTo(m, o.fire.x, o.fire.z) < 900;
+      return o && o.kind === 'fire' && o.bot && o.bot.phase === 'pass' && m.ac.waterKg > 700 && distTo(m, o.fire.x, o.fire.z) < 520;
     });
     return { ms, view: 'cockpit' };
   },
@@ -52,7 +53,8 @@ export const SHOTS = {
       runUntil(ms, () => false, 1800);
       const r = missionResult(ms);
       recordFlight(career, r, ms.ac, def.client);
-      if (def.order === 2) buyUpgrade(career, 'longTank');
+      if (def.order === 3) buyUpgrade(career, 'nightKit');
+      if (def.order < 5) repairAll(career);
     }
     // a scrape on the floats from the last job, waiting for Teodor
     career.damage.floats = Math.min(career.damage.floats, 82);

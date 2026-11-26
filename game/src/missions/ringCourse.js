@@ -1,10 +1,6 @@
 // Mission 2, Cinder Ring Trial: eight rings around Mount Cinder against the clock,
 // each at its own height, then home to Port Halyard. Rewards smooth turns and throttle.
 
-import { ring, landAny } from './objectives.js';
-import { inFlight } from './startPoints.js';
-import { groundHeight } from '../terrain/heightmap.js';
-
 // x, z, height above sea (raised to clear the ground), name
 const COURSE = [
   [300, -700, 300, 'Channel Gate'],
@@ -14,7 +10,7 @@ const COURSE = [
   [-900, -5300, 380, 'Gannet Approach'],
   [-2200, -4100, 450, 'West Scarp'],
   [-2500, -2500, 380, 'Lava Fan'],
-  [0, 2700, 150, 'Home Gate'],
+  [0, 2200, 95, 'Home Gate'],
 ];
 
 function facing(i) {
@@ -44,15 +40,17 @@ export default {
   weather: 'breezy',
   windFrom: 300,
   seed: 23,
-  start: inFlight(0, 600, 220, 340, 44, 0.65),
+  start: (k) => k.inFlight(0, 600, 220, 340, 44, 0.65),
   fuel: 0.6,
   pay: 650,
   parTime: 600,
   timeLimit: 900,
   timeLimitText: 'The balloons drifted off before you finished the course',
-  build() {
-    const rings = COURSE.map(([x, z, y, name], i) => ring(x, Math.max(y, groundHeight(x, z) + 130), z, 48, facing(i), name, i === COURSE.length - 1));
-    return [...rings, landAny(['halyard', 'halyardHarbour'], 'Land at Port Halyard or the harbour')];
+  build(ms, k) {
+    // every ring hangs well clear of the ground, except the Home Gate low on short final
+    const last = COURSE.length - 1;
+    const rings = COURSE.map(([x, z, y, name], i) => k.ring(x, i === last ? y : Math.max(y, k.groundHeight(x, z) + 130), z, 48, facing(i), name, i === last));
+    return [...rings, k.landAny(['halyard', 'halyardHarbour'], 'Land at Port Halyard or the harbour')];
   },
   radio: {
     start: [

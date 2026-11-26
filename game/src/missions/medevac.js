@@ -2,9 +2,6 @@
 // them aboard, and bring them to Port Halyard. Hard touchdowns, high g and rough air
 // all hurt the patient; time aboard slowly does too.
 
-import { takeoff, land, holdStill } from './objectives.js';
-import { lineUp } from './startPoints.js';
-
 export default {
   id: 'medevac',
   order: 3,
@@ -21,21 +18,21 @@ export default {
   weather: 'breezy',
   windFrom: 20,
   seed: 31,
-  start: lineUp('halyard', 0),
+  start: (k) => k.lineUp('halyard', 0),
   fuel: 0.65,
   pay: 900,
   parTime: 560,
-  build(ms) {
+  build(ms, k) {
     return [
-      takeoff('Take off from Port Halyard'),
-      land('saltmoorLane', { maxFpm: 450, cargo: 'the floats and the stretcher crew' }),
-      holdStill('saltmoorLane', 8, 'Stretcher coming aboard', () => {
+      k.takeoff('Take off from Port Halyard'),
+      k.land('saltmoorLane', { maxFpm: 450, cargo: 'the floats and the stretcher crew' }),
+      k.holdStill('saltmoorLane', 8, 'Stretcher coming aboard', () => {
         ms.extra.patientAboard = true;
         ms.ac.payloadKg += 160;
         ms.radio.setState('ilse', 'Riding in back with the patient');
       }),
-      takeoff('Take off with the patient'),
-      land('halyard', { maxFpm: 300, cargo: 'the patient', failText: undefined }),
+      k.takeoff('Take off with the patient'),
+      k.land('halyard', { maxFpm: 300, cargo: 'the patient' }),
     ];
   },
   setup(ms) {

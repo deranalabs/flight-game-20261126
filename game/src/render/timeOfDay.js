@@ -8,8 +8,8 @@ export const TIMES = {
     water: 0x2f7d95, waterDeep: 0x1d5470, stars: 0, windows: 0, sunDisc: 0xfff3c8,
   },
   day: {
-    label: 'Midday', skyTop: 0x3f7fd6, skyHorizon: 0xcfe4f2, fog: 0xc7dbe6, sun: 0xffffff, sunIntensity: 2.6,
-    sunDir: [0.35, 0.82, 0.3], hemiSky: 0xd0e6ff, hemiGround: 0x5f6a40, hemiIntensity: 1.35,
+    label: 'Midday', skyTop: 0x3f7fd6, skyHorizon: 0xcfe4f2, fog: 0xc7dbe6, sun: 0xfff6e8, sunIntensity: 2.2,
+    sunDir: [0.45, 0.7, 0.45], hemiSky: 0xd0e6ff, hemiGround: 0x5f6a40, hemiIntensity: 1.1,
     water: 0x2a87a8, waterDeep: 0x175a80, stars: 0, windows: 0, sunDisc: 0xffffff,
   },
   dusk: {

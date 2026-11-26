@@ -4,15 +4,14 @@
 // freezes a real moment of play for the screenshots.
 
 import { MISSIONS, missionById } from './missions/index.js';
-import { animateSeaplane } from './aircraft/seaplaneModel.js';
 import { STEP } from './flight/flightModel.js';
-import { startMission, stepMission, missionResult, currentObjective } from './missions/missionRunner.js';
+import { animateSeaplane } from './aircraft/seaplaneModel.js';
 import { drawInstrumentPanel } from './instruments/instrumentPanel.js';
+import { drawFlightHud, objectiveBearing } from './hud/flightHud.js';
+import { startMission, stepMission, missionResult, currentObjective } from './missions/missionRunner.js';
+import { loadCareer, saveCareer, recordFlight, repairAll, repairPart, buyUpgrade } from './hangar/careerSave.js';
 import { buildWorld, makeRenderer } from './render/worldScene.js';
 import { tryRestart } from './systems/engine.js';
-import { CAST } from './characters/radioCast.js';
-import { loadCareer, saveCareer, recordFlight, repairAll, repairPart, buyUpgrade } from './hangar/careerSave.js';
-import { drawFlightHud, objectiveBearing } from './hud/flightHud.js';
 import { makeCameraRig } from './camera/cameraRig.js';
 import { makePilotControls } from './input/pilotControls.js';
 import { makeSoundEngine } from './audio/soundEngine.js';
@@ -207,7 +206,7 @@ function renderFlight(ms, dt, opts = {}) {
   model.visible = true;
   model.position.set(ac.pos.x, ac.pos.y, ac.pos.z);
   model.quaternion.set(ac.q.x, ac.q.y, ac.q.z, ac.q.w);
-  animateSeaplane(model, ac, game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight });
+  animateSeaplane(model, ac, game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit' });
   const wind = ms.env.wind.at(ac.pos, ac.t);
   const wl = Math.hypot(wind.x, wind.z) || 1;
   w.markers.update(ms, game.t, { x: wind.x / wl * 0.4, z: wind.z / wl * 0.4 });
@@ -292,6 +291,7 @@ function startShot(req) {
   }
 }
 
+window.tidewing = game; // handle for the browser console and play-tests
 const shotReq = readShotRequest();
 if (shotReq) startShot(shotReq);
 else {

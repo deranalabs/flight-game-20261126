@@ -20,11 +20,12 @@ export function makeCameraRig(camera) {
     q.set(ac.q.x, ac.q.y, ac.q.z, ac.q.w);
     const p = new THREE.Vector3(ac.pos.x, ac.pos.y, ac.pos.z);
     if (rig.mode === 'cockpit') {
-      const eye = new THREE.Vector3(-0.25, 0.62, -1.15).applyQuaternion(q).add(p);
+      // pilot's eye in the left seat, just under the wing root
+      const eye = new THREE.Vector3(-0.25, 0.7, -1.3).applyQuaternion(q).add(p);
       camera.position.copy(eye);
       const lookQ = q.clone()
         .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rig.look.yaw))
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rig.look.pitch - 0.1));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rig.look.pitch - 0.13));
       camera.quaternion.copy(lookQ);
       camera.fov = 72;
       camera.updateProjectionMatrix();

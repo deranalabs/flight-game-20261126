@@ -2,13 +2,6 @@
 // engine and it stops. Hold best glide, pick a field you can reach, and land without
 // power. A restart (R) works once the ash clears, at a cost to the score.
 
-import { landAny } from './objectives.js';
-import { inFlight } from './startPoints.js';
-import { LANDMARKS } from '../terrain/islandLayout.js';
-import { killEngine } from '../systems/engine.js';
-
-const CRATER = LANDMARKS.crater;
-
 export default {
   id: 'engineOutGlide',
   order: 8,
@@ -25,12 +18,12 @@ export default {
   weather: 'calm',
   windFrom: 200,
   seed: 83,
-  start: inFlight(CRATER.x + 900, CRATER.z + 500, 650, 150, 44, 0.55),
+  start: (k) => k.inFlight(k.LANDMARKS.crater.x + 900, k.LANDMARKS.crater.z + 500, 650, 150, 44, 0.55),
   fuel: 0.5,
   pay: 1200,
   parTime: 300,
-  build() {
-    return [landAny(['halyard', 'halyardHarbour', 'saltmoorLane'], 'Glide to Port Halyard, the harbour or Saltmoor', { anyWater: true, bot: { gateAlt: 300, back: 2000, glideDeg: 7, aim: 350 } })];
+  build(ms, k) {
+    return [k.landAny(['halyard', 'halyardHarbour', 'saltmoorLane'], 'Glide to Port Halyard, the harbour or Saltmoor', { anyWater: true, bot: { gateAlt: 300, back: 2000, glideDeg: 7, aim: 350 } })];
   },
   setup(ms) {
     ms.extra.failAt = 9;
@@ -41,7 +34,7 @@ export default {
     const ac = ms.ac;
     if (ms.t >= ms.extra.failAt && !ms.extra.failed) {
       ms.extra.failed = true;
-      killEngine(ac.engine, 'ash');
+      ms.kit.killEngine(ac.engine, 'ash');
       ac.engineForcedOff = true;
       ms.radio.line('junie', 'Your engine just went quiet on my scope! That\'s the ash.', ms.t, 1);
       ms.radio.setState('junie', 'Watching you glide');

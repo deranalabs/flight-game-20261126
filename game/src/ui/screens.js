@@ -95,7 +95,7 @@ export function showHangar(career, castStates, h) {
     </div>
     <div class="cols">
       <div class="card"><h2>MISSION BOARD <span>pick a job, read the brief, fly</span></h2>${missionRows}</div>
-      <div class="card"><h2>THE TERN MK II <span>TW-07 · repairs and upgrades</span></h2>${parts}
+      <div class="card"><h2>THE TERN <span>TW-07 · repairs and upgrades</span></h2>${parts}
         <div class="row" style="justify-content:space-between;align-items:center"><span style="color:#b7c0c8;font-size:14px">Fuel ${FUEL_PRICE} sh/L, billed after each flight</span>
         <button data-repair="all" ${total <= 0 || career.cash < total ? 'disabled' : ''}>Repair all ${total} sh</button></div>
         <h2 style="margin-top:4px">UPGRADES</h2>${ups}</div>

@@ -10,6 +10,7 @@ import { makeRadio } from '../characters/radioCast.js';
 import { gradeLanding } from '../flight/landingJudge.js';
 import { condition, PARTS } from '../systems/damageModel.js';
 import { groundHeight } from '../terrain/heightmap.js';
+import { KIT } from './missionKit.js';
 
 /**
  * Begin a mission. career: { upgrades: [], damage: {...} } carries the hangar state in;
@@ -19,13 +20,14 @@ export function startMission(def, career = {}, seed = 1) {
   const upgrades = [...(career.upgrades ?? []), ...(def.lends ?? [])];
   const spec = buildSpec(upgrades);
   const env = makeFlightEnv(def.weather, def.windFrom, def.seed ?? seed);
-  const start = { ...def.start, fuel: def.fuel ?? 1, payloadKg: def.payloadKg ?? 0, damage: { ...(career.damage ?? {}) } };
+  const where = typeof def.start === 'function' ? def.start(KIT) : def.start;
+  const start = { ...where, fuel: def.fuel ?? 1, payloadKg: def.payloadKg ?? 0, damage: { ...(career.damage ?? {}) } };
   if (start.onSurface) start.y = 0;
   const ac = makeAircraft(spec, start);
   if (start.onSurface) settleOnSurface(ac, env);
   else if (start.agl !== undefined) ac.pos.y = Math.max(0, groundHeight(ac.pos.x, ac.pos.z)) + start.agl;
   const ms = {
-    def, ac, env, spec,
+    def, ac, env, spec, kit: KIT,
     ap: makeAutopilot(),
     radio: makeRadio(def.radio ?? {}),
     windFrom: def.windFrom,
@@ -64,7 +66,7 @@ export function startMission(def, career = {}, seed = 1) {
     spawnLoad(l) { ms.loads.push({ ...l, kind: 'load', t: 0 }); },
     spawnWater(w) { ms.loads.push({ ...w, vy: 0, kind: 'water', t: 0 }); },
   };
-  ms.objectives = def.build(ms);
+  ms.objectives = def.build(ms, KIT);
   if (def.setup) def.setup(ms);
   for (const [who, text] of def.radio?.start ?? []) ms.radio.line(who, text, 0);
   return ms;

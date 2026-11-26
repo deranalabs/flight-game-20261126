@@ -7,6 +7,7 @@ import { groundHeight, slopeAt } from '../terrain/heightmap.js';
 import { forestAt } from '../terrain/terrainMesh.js';
 import { VILLAGES, LANDMARKS, RUNWAYS, PADS } from '../terrain/islandLayout.js';
 import { seededRandom } from '../util/noise.js';
+import { glowSprite } from './glowSprite.js';
 
 const lambert = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, flatShading: true, ...extra });
 
@@ -159,11 +160,14 @@ function buildRunways(time) {
     const geo = new THREE.PlaneGeometry(rw.width, rw.length);
     geo.rotateX(-Math.PI / 2);
     const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: runwayTexture(rw) }));
-    mesh.position.set(rw.x, rw.elev + 0.25, rw.z);
+    mesh.position.set(rw.x, rw.elev + 0.9, rw.z);
     // canvas bottom (first number) lands at the 'a' threshold, glyphs upright for a pilot landing on hdg
     mesh.rotation.y = -(rw.hdg * Math.PI) / 180;
     g.add(mesh);
-    if (time.windows > 0.3 && rw.kind === 'runway') g.add(runwayLights(rw));
+    if (rw.kind === 'runway') {
+      g.add(approachLights(rw, time));
+      if (time.windows > 0.3) g.add(runwayLights(rw));
+    }
   }
   return g;
 }
@@ -182,6 +186,33 @@ function runwayLights(rw) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   return new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffd27a, size: 5, sizeAttenuation: false, fog: true }));
+}
+
+/** Approach light bars on poles before each threshold, and green threshold lights. */
+function approachLights(rw, time) {
+  const g = new THREE.Group();
+  const { fx, fz, rx, rz } = laneAxes(rw);
+  const size = time.windows > 0.5 ? 16 : 11;
+  for (const end of [-1, 1]) {
+    // end -1: the 'a' threshold; the lights run back out along the approach
+    const base = (rw.length / 2) * end;
+    for (let i = 1; i <= 10; i++) {
+      const s = base + end * i * 32;
+      const y = Math.max(rw.elev, groundHeight(rw.x + fx * s, rw.z + fz * s)) + 3;
+      const bar = i === 5 ? [-3, -2, -1, 0, 1, 2, 3] : [-1, 0, 1];
+      for (const k of bar) {
+        const l = glowSprite(0xfff6dc, size);
+        l.position.set(rw.x + fx * s + rx * k * 5, y, rw.z + fz * s + rz * k * 5);
+        g.add(l);
+      }
+    }
+    for (let k = -4; k <= 4; k++) {
+      const l = glowSprite(0x44ff88, size * 0.8);
+      l.position.set(rw.x + fx * base + rx * k * (rw.width / 8), rw.elev + 1.6, rw.z + fz * base + rz * k * (rw.width / 8));
+      g.add(l);
+    }
+  }
+  return g;
 }
 
 function buildLaneBuoys(rw, time) {
@@ -252,25 +283,6 @@ function buildLighthouse() {
     beam.rotation.y = t * 0.6;
   };
   return g;
-}
-
-let glowTex = null;
-export function glowSprite(color, size) {
-  if (!glowTex) {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = 64;
-    const ctx = cv.getContext('2d');
-    const grd = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grd.addColorStop(0, 'rgba(255,255,255,1)');
-    grd.addColorStop(0.25, 'rgba(255,255,255,0.6)');
-    grd.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, 64, 64);
-    glowTex = new THREE.CanvasTexture(cv);
-  }
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-  s.scale.set(size, size, 1);
-  return s;
 }
 
 function buildHangar() {
@@ -370,9 +382,9 @@ function buildVolcanoSmoke(time, rnd) {
       const p = (s.userData.phase + t * 0.012) % 1;
       const h = p * 900;
       s.position.set(c.x + windX * h * 0.9 + s.userData.drift * 60 * p, top + 20 + h, c.z + windZ * h * 0.9 + s.userData.drift * 40);
-      const size = 120 + p * 520;
+      const size = 160 + p * 640;
       s.scale.set(size, size, 1);
-      s.material.opacity = 0.55 * (1 - p) * Math.min(1, p * 8);
+      s.material.opacity = 0.75 * (1 - p) * Math.min(1, p * 8);
     }
   };
   return g;

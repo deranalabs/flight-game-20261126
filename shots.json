@@ -1,5 +1,6 @@
 [
-  { "name": "1-start.jpg", "query": "?shot=start&seed=1" },
-  { "name": "2-play.jpg", "query": "?shot=play&seed=1" },
-  { "name": "3-end.jpg", "query": "?shot=end&seed=1" }
+  { "name": "1-ring-trial-chase.jpg", "query": "?shot=cover&seed=1" },
+  { "name": "2-fire-run-cockpit.jpg", "query": "?shot=cockpit&seed=1" },
+  { "name": "3-night-lighthouse-run.jpg", "query": "?shot=night&seed=1" },
+  { "name": "4-hangar-board-logbook.jpg", "query": "?shot=hangar&seed=1" }
 ]

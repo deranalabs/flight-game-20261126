@@ -2,10 +2,6 @@
 // Calloway needs a new lamp lens before the fishing fleet comes home. Follow the flare
 // gates up the coast, land in the cove between the buoys, and the light comes back on.
 
-import { takeoff, ring, land, holdStill } from './objectives.js';
-import { lineUp } from './startPoints.js';
-import { groundHeight } from '../terrain/heightmap.js';
-
 const GATES = [
   [1400, -800, 260, 'Channel flare'],
   [2300, -3300, 300, 'Cinder East flare'],
@@ -28,21 +24,21 @@ export default {
   weather: 'calm',
   windFrom: 280,
   seed: 61,
-  start: lineUp('halyard', 0),
+  start: (k) => k.lineUp('halyard', 0),
   fuel: 0.6,
   pay: 1000,
   parTime: 540,
-  build(ms) {
+  build(ms, k) {
     const gates = GATES.map(([x, z, y, name], i) => {
       const [nx, , nz] = GATES[Math.min(GATES.length - 1, i + 1)];
       const hdg = i === GATES.length - 1 ? 0 : ((Math.atan2(nx - x, -(nz - z)) * 180) / Math.PI + 360) % 360;
-      return ring(x, Math.max(y, groundHeight(x, z) + 140), z, 55, hdg, name);
+      return k.ring(x, Math.max(y, k.groundHeight(x, z) + 140), z, 55, hdg, name);
     });
     return [
-      takeoff('Take off from Port Halyard'),
+      k.takeoff('Take off from Port Halyard'),
       ...gates,
-      land('gannetCove', {}),
-      holdStill('gannetCove', 6, 'Handing the lens to Pip', () => {
+      k.land('gannetCove', {}),
+      k.holdStill('gannetCove', 6, 'Handing the lens to Pip', () => {
         ms.extra.lightOn = true;
         ms.radio.setState('pip', 'Light burning');
       }),
