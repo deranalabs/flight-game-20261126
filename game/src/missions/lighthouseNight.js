@@ -28,7 +28,7 @@ export default {
   weather: 'calm',
   windFrom: 280,
   seed: 61,
-  start: lineUp('halyard', 270),
+  start: lineUp('halyard', 0),
   fuel: 0.6,
   pay: 1000,
   parTime: 540,
@@ -55,7 +55,7 @@ export default {
   radio: {
     start: [
       ['pip', 'It is black as tar up here. The fleet is two hours out. I have the jetty lantern lit.'],
-      ['marta', 'Night departure, runway two-seven. First flare is over the channel, northeast.'],
+      ['marta', 'Night departure, runway three-six. First flare is over the channel, northeast.'],
     ],
     obj2: [['marta', 'Through the channel flare. Next one is east of Cinder. Stay above a thousand.']],
     obj4: [['pip', 'I can hear your engine! The cove buoys are lit, land between them heading west.']],

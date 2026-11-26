@@ -21,7 +21,7 @@ export default {
   weather: 'breezy',
   windFrom: 170,
   seed: 41,
-  start: lineUp('halyard', 270),
+  start: lineUp('halyard', 180),
   fuel: 0.6,
   payloadKg: 220,
   pay: 780,

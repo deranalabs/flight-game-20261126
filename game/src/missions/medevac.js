@@ -21,7 +21,7 @@ export default {
   weather: 'breezy',
   windFrom: 20,
   seed: 31,
-  start: lineUp('halyard', 90),
+  start: lineUp('halyard', 0),
   fuel: 0.65,
   pay: 900,
   parTime: 560,
@@ -62,7 +62,7 @@ export default {
   },
   radio: {
     start: [
-      ['marta', 'Tern, medevac priority. Runway zero-niner, wind zero-two-zero light.'],
+      ['marta', 'Tern, medevac priority. Runway three-six, wind zero-two-zero light.'],
       ['ilse', 'He is strapped to the board at the dock. Gentle on the water, please.'],
     ],
     obj2: [['ilse', 'Good, nice and soft. Taxi to us and hold still while we load him.']],

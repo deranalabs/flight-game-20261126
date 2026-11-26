@@ -28,7 +28,7 @@ export default {
   weather: 'storm',
   windFrom: 135,
   seed: 71,
-  start: lineUp('halyard', 90),
+  start: lineUp('halyard', 180),
   fuel: 0.16,
   pay: 1300,
   parTime: 600,
@@ -105,7 +105,7 @@ export default {
   radio: {
     start: [
       ['junie', 'The squall line is over Skerry now and moving your way. I need those parts, Tern.'],
-      ['marta', 'Runway zero-niner, wind one-three-five at twenty-six gusting forty. Your call.'],
+      ['marta', 'Runway one-eight, wind one-three-five at twenty-six gusting forty. Your call.'],
     ],
     obj2: [['junie', 'You made it through that? Hold on the lane, I am coming down the slip.']],
     done: [['junie', 'Barometer is reading again. The fleet gets a proper warning tonight.']],

@@ -14,10 +14,12 @@ const COURSE = [
   [-900, -5300, 380, 'Gannet Approach'],
   [-2200, -4100, 450, 'West Scarp'],
   [-2500, -2500, 380, 'Lava Fan'],
-  [-1600, -900, 260, 'Home Gate'],
+  [0, 2700, 150, 'Home Gate'],
 ];
 
 function facing(i) {
+  // the Home Gate sits on the runway 36 approach line, facing the runway and the volcano
+  if (i === COURSE.length - 1) return 0;
   const [x, , z] = COURSE[i];
   const [nx, , nz] = COURSE[Math.min(COURSE.length - 1, i + 1)];
   const [px, , pz] = COURSE[Math.max(0, i - 1)];
@@ -49,7 +51,7 @@ export default {
   timeLimit: 900,
   timeLimitText: 'The balloons drifted off before you finished the course',
   build() {
-    const rings = COURSE.map(([x, z, y, name], i) => ring(x, Math.max(y, groundHeight(x, z) + 130), z, 48, facing(i), name));
+    const rings = COURSE.map(([x, z, y, name], i) => ring(x, Math.max(y, groundHeight(x, z) + 130), z, 48, facing(i), name, i === COURSE.length - 1));
     return [...rings, landAny(['halyard', 'halyardHarbour'], 'Land at Port Halyard or the harbour')];
   },
   radio: {
@@ -59,6 +61,7 @@ export default {
     ],
     obj3: [['junie', 'Three down. East Gully next, she sits high, start climbing now.']],
     obj5: [['junie', 'Half way! The north lip gets bumpy in a westerly.']],
+    obj7: [['junie', 'Last one: the Home Gate hangs on the runway three-six approach. Through it and straight in to land!']],
     obj8: [['junie', 'Home Gate! Bring her in to Halyard and I\'ll read out your time.']],
     done: [['junie', 'Course flown! I am writing your time on the observatory board.']],
   },

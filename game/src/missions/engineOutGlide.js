@@ -30,7 +30,7 @@ export default {
   pay: 1200,
   parTime: 300,
   build() {
-    return [landAny(['halyard', 'halyardHarbour', 'saltmoorLane'], 'Glide to Port Halyard, the harbour or Saltmoor', { anyWater: true, bot: { gateAlt: 260, back: 2000 } })];
+    return [landAny(['halyard', 'halyardHarbour', 'saltmoorLane'], 'Glide to Port Halyard, the harbour or Saltmoor', { anyWater: true, bot: { gateAlt: 300, back: 2000, glideDeg: 7, aim: 350 } })];
   },
   setup(ms) {
     ms.extra.failAt = 9;

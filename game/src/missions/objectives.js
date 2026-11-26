@@ -23,6 +23,11 @@ export function safeAltitude(x, z, tx, tz, alt, clearance = 140) {
   return Math.max(alt, hi + clearance);
 }
 
+/** Also clear the ground along the present track for the next 40 seconds of flight. */
+export function clearAhead(ac, alt, clearance = 110) {
+  return safeAltitude(ac.pos.x, ac.pos.z, ac.pos.x + ac.vel.x * 40, ac.pos.z + ac.vel.z * 40, alt, clearance);
+}
+
 /** Where a released load hits the ground or water: simple fall with the aircraft's velocity. */
 export function predictImpact(ac) {
   const surface = Math.max(0, groundHeight(ac.pos.x, ac.pos.z));
@@ -34,15 +39,20 @@ export function predictImpact(ac) {
   return { x: ac.pos.x + ac.vel.x * t * k, z: ac.pos.z + ac.vel.z * t * k, t };
 }
 
-function landingDirection(rw, windFromDeg) {
-  // land into the wind: pick the runway end whose heading is closest to the wind's origin
+function landingDirection(rw, windFromDeg, back = 2600) {
+  // land into the wind: pick the runway end whose heading is closest to the wind's origin,
+  // unless its approach gate sits over high ground (the volcano), then take the other end
   const d = Math.abs(wrap180(rw.hdg - windFromDeg));
-  return d <= 90 ? rw.hdg : (rw.hdg + 180) % 360;
+  const into = d <= 90 ? rw.hdg : (rw.hdg + 180) % 360;
+  const other = (into + 180) % 360;
+  const elev = rw.kind === 'lane' ? 0 : rw.elev;
+  const high = (h) => { const g = approachGate(rw, h, back); return groundHeight(g.x, g.z) > elev + 80; };
+  return high(into) && !high(other) ? other : into;
 }
 
 function botApproach(o, ctx, rw, opts = {}) {
   const { ac, ms, dt } = ctx;
-  const st = o.bot ?? (o.bot = { phase: 'gate', hdg: landingDirection(rw, ms.windFrom) });
+  const st = o.bot ?? (o.bot = { phase: 'gate', hdg: landingDirection(rw, ms.windFrom, opts.back ?? 2600) });
   const gate = approachGate(rw, st.hdg, opts.back ?? 2600);
   const alt = (rw.kind === 'lane' ? 0 : rw.elev) + (opts.gateAlt ?? 230);
   if (st.phase === 'gate' && ac.onSurface) {
@@ -87,8 +97,11 @@ export function takeoff(label = 'Take off', hdg = null) {
   };
 }
 
-/** Fly through a ring at (x, y, z) radius r; hdg is the way the ring faces. */
-export function ring(x, y, z, r, hdg, name) {
+/**
+ * Fly through a ring at (x, y, z) radius r; hdg is the way the ring faces. With lineUp
+ * the bot swings out behind it and flies through straight along its facing.
+ */
+export function ring(x, y, z, r, hdg, name, lineUp = false) {
   return {
     kind: 'ring', x, y, z, r, hdg, name,
     label(ms) { return `Fly through ring ${ms.ringNo(this)}${name ? ` · ${name}` : ''}`; },
@@ -99,17 +112,40 @@ export function ring(x, y, z, r, hdg, name) {
     },
     fly(ctx) {
       const { ac, ms, dt } = ctx;
-      // aim through the ring along its facing: a point behind it, then the centre
+      // line up through the ring along its facing: a point 900 m behind it, then the centre
+      const fx = Math.sin(hdg * DEG);
+      const fz = -Math.cos(hdg * DEG);
       const d = Math.hypot(ac.pos.x - x, ac.pos.z - z);
-      const brg = bearingTo(ac.pos.x, ac.pos.z, x, z);
-      const off = wrap180(brg - hdg);
-      if (d > 700 && Math.abs(off) > 35) {
-        const bx = x - Math.sin(hdg * DEG) * 650;
-        const bz = z + Math.cos(hdg * DEG) * 650;
-        flyTo(ac, ms.ap, bx, bz, safeAltitude(ac.pos.x, ac.pos.z, bx, bz, y), 44, dt, 32);
-      } else {
-        flyTo(ac, ms.ap, x, z, d < 600 ? y : safeAltitude(ac.pos.x, ac.pos.z, x, z, y, 90), 44, dt, d < 500 ? 18 : 32);
+      const st = this.bot ?? (this.bot = {});
+      // the lining-up point behind the ring, pulled in if it would sit over high ground
+      let back = 2400;
+      while (back > 600 && groundHeight(x - fx * back, z - fz * back) > y - 120) back -= 175;
+      if (!lineUp) {
+        // any ring is cleared by flying through its centre, from whatever side
+        const alt = Math.max(safeAltitude(ac.pos.x, ac.pos.z, x, z, y, d < 600 ? 60 : 90), d < 700 ? 0 : clearAhead(ac, y));
+        flyTo(ac, ms.ap, x, z, alt, 44, dt, d < 500 ? 20 : 32);
+        return;
       }
+      if (!st.phase) {
+        const off = wrap180(bearingTo(ac.pos.x, ac.pos.z, x, z) - hdg);
+        st.phase = d > 700 && Math.abs(off) > 12 ? 'behind' : 'through';
+      }
+      if (st.phase === 'behind') {
+        const bx = x - fx * back;
+        const bz = z - fz * back;
+        if (flyTo(ac, ms.ap, bx, bz, clearAhead(ac, safeAltitude(ac.pos.x, ac.pos.z, bx, bz, y)), 44, dt, 32) < 300) st.phase = 'through';
+        return;
+      }
+      // metres past the ring's plane along its facing (negative: still before it), and
+      // metres right of the line through its centre: intercept that line like a runway
+      const past = (ac.pos.x - x) * fx + (ac.pos.z - z) * fz;
+      const cross = (ac.pos.x - x) * -fz + (ac.pos.z - z) * fx;
+      const lead = Math.max(180, Math.min(600, -past * 0.25));
+      const want = hdg + Math.max(-45, Math.min(45, Math.atan2(-cross, lead) / DEG));
+      const alt = Math.max(safeAltitude(ac.pos.x, ac.pos.z, x, z, y, d < 600 ? 60 : 90), d < 700 ? 0 : clearAhead(ac, y));
+      flyHeading(ac, ms.ap, want, alt, 44, dt, d < 400 ? 20 : 32);
+      // flew past without going through: go round and line up again
+      if (past > 250) st.phase = 'behind';
     },
   };
 }

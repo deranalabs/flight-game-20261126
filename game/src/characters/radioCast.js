@@ -57,8 +57,10 @@ export function makeRadio(scripted = {}) {
     setState(who, state) { if (cast[who]) cast[who].state = state; },
     /** Advance: show each line for a time that depends on its length. */
     update(t) {
-      if (radio.current && t - radio.current.shownAt > radio.current.hold) radio.current = null;
-      if (!radio.current && radio.queue.length) {
+      // a call stays on screen after its time is up, until the next one comes in
+      const expired = radio.current && t - radio.current.shownAt > radio.current.hold;
+      if (expired) radio.current.stale = true;
+      if ((!radio.current || expired) && radio.queue.length) {
         const m = radio.queue.shift();
         m.shownAt = t;
         m.hold = 2.8 + m.text.length * 0.045;

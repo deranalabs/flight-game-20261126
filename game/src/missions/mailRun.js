@@ -24,7 +24,7 @@ export default {
   weather: 'breezy',
   windFrom: 260,
   seed: 11,
-  start: lineUp('halyard', 270),
+  start: lineUp('halyard', 180),
   fuel: 0.7,
   payloadKg: 60,
   pay: 520,
@@ -32,7 +32,7 @@ export default {
   missAllowance: 1,
   build() {
     return [
-      takeoff('Take off from Port Halyard, runway 27'),
+      takeoff('Take off from Port Halyard, runway 18'),
       drop(town.x, town.z, 55, 'Halyard Town square'),
       drop(salt.x, salt.z, 55, 'Saltmoor square'),
       land('saltmoorLane', {}),
@@ -40,7 +40,7 @@ export default {
   },
   radio: {
     start: [
-      ['marta', 'Morning, Tern. Wind two-six-zero at twelve, runway two-seven is yours.'],
+      ['marta', 'Morning, Tern. Wind two-six-zero at twelve, runway one-eight is yours.'],
       ['wren', 'First sack is for Halyard Town, the square by the red roofs. Mind the chimneys.'],
     ],
     obj2: [['wren', 'Right on the square! Saltmoor next, east across the strait.']],

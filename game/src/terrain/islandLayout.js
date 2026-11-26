@@ -8,7 +8,7 @@ export const SEA_LEVEL = 0;
 
 /** Islands: each is a bump of land; shape 'hills', 'ridge' or 'volcano'. */
 export const ISLANDS = [
-  { id: 'halyard', name: 'Halyard Isle', x: 0, z: 2000, r: 1900, h: 150, shape: 'hills', seed: 3 },
+  { id: 'halyard', name: 'Halyard Isle', x: 0, z: 2000, r: 1900, h: 95, shape: 'hills', seed: 3 },
   { id: 'cinder', name: 'Mount Cinder', x: -200, z: -3000, r: 2300, h: 1150, shape: 'volcano', seed: 7 },
   { id: 'saltmoor', name: 'Saltmoor', x: 5400, z: 200, r: 1600, h: 190, shape: 'hills', seed: 11 },
   { id: 'tallow', name: 'Tallow Island', x: -5400, z: -100, r: 2300, h: 560, shape: 'ridge', seed: 13 },
@@ -22,8 +22,8 @@ export const ISLANDS = [
  */
 export const RUNWAYS = {
   halyard: {
-    id: 'halyard', name: 'Port Halyard 09/27', kind: 'runway',
-    x: 0, z: 1100, hdg: 90, length: 1100, width: 30, elev: 0, numbers: ['09', '27'],
+    id: 'halyard', name: 'Port Halyard 36/18', kind: 'runway',
+    x: 0, z: 1100, hdg: 0, length: 1100, width: 36, elev: 0, numbers: ['36', '18'],
   },
   ridgeback: {
     id: 'ridgeback', name: 'Ridgeback Strip', kind: 'strip',
@@ -53,7 +53,7 @@ export const RUNWAYS = {
 
 /** Flat pads cut into the terrain: villages, the hangar apron and the observatory. */
 export const PADS = [
-  { id: 'apron', x: 150, z: 1010, w: 280, d: 110, elev: 0 },
+  { id: 'apron', x: 130, z: 1000, w: 150, d: 260, elev: 0 },
   { id: 'halyardTown', x: 700, z: 2500, w: 420, d: 300, elev: 0 },
   { id: 'saltmoorTown', x: 4550, z: 350, w: 380, d: 320, elev: 0 },
   { id: 'brackwater', x: -4300, z: 400, w: 300, d: 260, elev: 0 },
@@ -72,7 +72,7 @@ export const VILLAGES = [
 
 export const LANDMARKS = {
   lighthouse: { name: 'Gannet Point Light', x: 2600, z: -6760, height: 34 },
-  hangar: { name: 'Teodor\'s Hangar', x: 170, z: 990 },
+  hangar: { name: 'Teodor\'s Hangar', x: 160, z: 980 },
   observatory: { name: 'Cinder Observatory', x: 950, z: -2650 },
   crater: { name: 'Cinder Crater', x: -200, z: -3000, r: 260 },
   dock: { name: 'Saltmoor Dock', x: 3990, z: 300 },

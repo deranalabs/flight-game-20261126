@@ -56,7 +56,7 @@ test('control authority grows with speed: the same aileron rolls faster when fas
 });
 
 test('takeoff from the runway and from the water', () => {
-  for (const [id, hdg] of [['halyard', 90], ['halyardHarbour', 90]]) {
+  for (const [id, hdg] of [['halyard', 0], ['halyardHarbour', 90]]) {
     const rw = RUNWAYS[id];
     const a = (hdg * Math.PI) / 180;
     const ac = makeAircraft(spec, { x: rw.x - Math.sin(a) * (rw.length / 2 - 60), y: 0, z: rw.z + Math.cos(a) * (rw.length / 2 - 60), hdg, speed: 0, onSurface: true, throttle: 1 });
