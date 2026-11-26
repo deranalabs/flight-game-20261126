@@ -1,7 +1,9 @@
 // Shot mode (?shot=<name>&seed=<n>): plays the game's own missions with the autopilot up
 // to a chosen moment and freezes there, so the screenshots are real frames of real play.
-//   cover   - Cinder Ring Trial, chase view, about to fly ring 8 with runway 09 beyond
-//   cockpit - Tallow Ridge Fire, cockpit view, low run-in on a burning slope
+//   cover   - Cinder Ring Trial, chase view, about to fly ring 8 with runway 36 and the volcano beyond
+//   dusk    - Saltmoor Medevac, cockpit view, short final into Port Halyard at sunset, patient aboard
+//   bomber  - Tallow Ridge Fire, chase view, low run-in on a burning slope with a full tank
+//   cockpit - Tallow Ridge Fire, cockpit view, the same run-in from the left seat
 //   night   - Gannet Point Lantern, chase view, the cove flare gate at night
 //   hangar  - the hangar screens after the autopilot has flown the first five missions
 
@@ -37,6 +39,24 @@ export const SHOTS = {
       return o && o.kind === 'fire' && o.bot && o.bot.phase === 'pass' && m.ac.waterKg > 700 && distTo(m, o.fire.x, o.fire.z) < 520;
     });
     return { ms, view: 'cockpit' };
+  },
+  dusk() {
+    const ms = startMission(missionById('medevac'), {}, 1);
+    runUntil(ms, (m) => {
+      const o = currentObjective(m);
+      // patient aboard, short final into Port Halyard at sunset
+      return m.index === 4 && o && o.bot && o.bot.phase === 'final' && distTo(m, o.rw.x, o.rw.z) < 1120;
+    });
+    return { ms, view: 'cockpit' };
+  },
+  bomber() {
+    const ms = startMission(missionById('waterBomber'), {}, 1);
+    // low over the forest on the run-in, the burning slope and its smoke ahead
+    runUntil(ms, (m) => {
+      const o = currentObjective(m);
+      return o && o.kind === 'fire' && o.bot && o.bot.phase === 'pass' && m.ac.waterKg > 700 && distTo(m, o.fire.x, o.fire.z) < 380;
+    });
+    return { ms, view: 'chase', camera: { distance: 20, height: 6, side: 6, lookAhead: 40, lookDown: -9 } };
   },
   night() {
     const ms = startMission(missionById('lighthouseNight'), {}, 1);

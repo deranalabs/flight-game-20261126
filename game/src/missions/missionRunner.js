@@ -131,7 +131,9 @@ function warnings(ms) {
   const frac = ac.fuel.litres / ac.fuel.capacity;
   if (frac < 0.15 && !w.lowFuel) { w.lowFuel = true; ms.say('lowFuel'); }
   if (frac < 0.05 && !w.fuelCritical) { w.fuelCritical = true; ms.say('fuelCritical'); }
-  if (ac.engine.temp > 104) ms.say('overheat');
+  // one warning per hot spell: Teodor speaks again only after the cylinders cooled off
+  if (ac.engine.temp > 106 && !w.hot) { w.hot = true; ms.say('overheat'); }
+  if (ac.engine.temp < 95) w.hot = false;
   if (!ac.engine.running && !w.engineOut && !ac.onSurface) { w.engineOut = true; ms.say('engineOut'); }
   if (ac.engine.running) w.engineOut = false;
   const worst = condition(ac.damage).worstHealth;

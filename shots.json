@@ -1,6 +1,6 @@
 [
   { "name": "1-ring-trial-chase.jpg", "query": "?shot=cover&seed=1" },
-  { "name": "2-fire-run-cockpit.jpg", "query": "?shot=cockpit&seed=1" },
-  { "name": "3-night-lighthouse-run.jpg", "query": "?shot=night&seed=1" },
+  { "name": "2-medevac-cockpit-dusk.jpg", "query": "?shot=dusk&seed=1" },
+  { "name": "3-water-bomber-run.jpg", "query": "?shot=bomber&seed=1" },
   { "name": "4-hangar-board-logbook.jpg", "query": "?shot=hangar&seed=1" }
 ]

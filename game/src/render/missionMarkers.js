@@ -100,7 +100,7 @@ function smokeColumn(color, count, height) {
       const p = (s.userData.phase + t * 0.08) % 1;
       const h = p * height * scale;
       s.position.set(wx * h * 0.6 + Math.sin(p * 9 + s.userData.phase * 20) * 3, h, wz * h * 0.6);
-      const size = (6 + p * 40) * scale * (g.userData.width ?? 1);
+      const size = (10 + p * 58) * scale * (g.userData.width ?? 1);
       s.scale.set(size, size, 1);
       s.material.opacity = 0.6 * (1 - p);
     }
@@ -133,6 +133,40 @@ function buildFire(o) {
   return g;
 }
 
+/**
+ * Water released from the belly tank: 600 drops that leave the tank as a column, fall
+ * with the aircraft's speed and spread into a wide curtain before they hit the slope.
+ */
+function makeWaterSpray(group) {
+  const N = 600;
+  const pos = new Float32Array(N * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe8f6ff, size: 1.6, map: puffTexture(), transparent: true, opacity: 0.8, depthWrite: false }));
+  pts.frustumCulled = false;
+  group.add(pts);
+  const jitter = Array.from({ length: N }, (_, i) => [Math.sin(i * 12.9898) * 43758.5453 % 1, Math.sin(i * 78.233) * 12543.123 % 1, Math.sin(i * 39.425) * 3758.77 % 1]);
+  return {
+    update(drops) {
+      let k = 0;
+      for (const l of drops.slice(-2)) {
+        if (l.t > 6) continue;
+        const spread = 3 + l.t * 14;
+        for (let j = 0; j < N / 2 && k < N; j++, k++) {
+          const [a, b, c] = jitter[j];
+          // drops released earlier trail behind and above the leading ones
+          const lag = Math.abs(c) * Math.min(l.t, 1.2);
+          pos[k * 3] = l.x - l.vx * lag + a * spread;
+          pos[k * 3 + 1] = Math.max(l.landed ? l.y : 0, l.y + lag * 9 + Math.abs(b) * spread * 0.4);
+          pos[k * 3 + 2] = l.z - l.vz * lag + b * spread;
+        }
+      }
+      for (; k < N; k++) pos[k * 3 + 1] = -500;
+      geo.attributes.position.needsUpdate = true;
+    },
+  };
+}
+
 /** Keep the 3D markers in step with the mission's objectives and loose loads. */
 export function makeMarkerLayer(scene, night) {
   const group = new THREE.Group();
@@ -143,8 +177,6 @@ export function makeMarkerLayer(scene, night) {
   group.add(loads);
   const sackGeo = new THREE.BoxGeometry(0.9, 0.6, 1.2);
   const sackMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3a });
-  const waterMat = new THREE.MeshBasicMaterial({ color: 0xcfeaff, transparent: true, opacity: 0.55, depthWrite: false });
-  const waterGeo = new THREE.SphereGeometry(6, 8, 6);
   const beacon = glowSprite(0x7fe0ff, 40);
   beacon.visible = false;
   group.add(beacon);
@@ -193,18 +225,17 @@ export function makeMarkerLayer(scene, night) {
       beacon.visible = true;
     } else beacon.visible = false;
 
-    // loose loads: sacks and water
+    // loose loads: mail sacks tumble, a water drop is a falling, spreading curtain of spray
     while (loads.children.length < ms.loads.length) loads.add(new THREE.Mesh(sackGeo, sackMat));
     loads.children.forEach((mesh, i) => {
       const l = ms.loads[i];
-      mesh.visible = !!l;
-      if (!l) return;
-      mesh.geometry = l.kind === 'water' ? waterGeo : sackGeo;
-      mesh.material = l.kind === 'water' ? waterMat : sackMat;
+      mesh.visible = !!l && l.kind !== 'water';
+      if (!l || l.kind === 'water') return;
       mesh.position.set(l.x, l.y, l.z);
-      if (l.kind === 'water') mesh.scale.set(1 + l.t * 2.5, 0.6 + l.t, 1 + l.t * 2.5);
-      else mesh.rotation.set(l.t * 3, l.t * 2, 0);
+      mesh.rotation.set(l.t * 3, l.t * 2, 0);
     });
+    spray.update(ms.loads.filter((l) => l.kind === 'water'));
   }
+  const spray = makeWaterSpray(group);
   return { group, update };
 }
