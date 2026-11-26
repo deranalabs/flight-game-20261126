@@ -1,6 +1,6 @@
 // Shot mode (?shot=<name>&seed=<n>): plays the game's own missions with the autopilot up
 // to a chosen moment and freezes there, so the screenshots are real frames of real play.
-//   cover   - Cinder Ring Trial, chase view, about to fly ring 8 with runway 09 beyond
+//   cover   - Cinder Ring Trial at dusk, chase view, about to fly ring 8 with the runway beyond
 //   cockpit - Tallow Ridge Fire, cockpit view, low run-in on a burning slope
 //   night   - Gannet Point Lantern, chase view, the cove flare gate at night
 //   hangar  - the hangar screens after the autopilot has flown the first five missions
@@ -28,7 +28,10 @@ export const SHOTS = {
       const off = Math.abs(((m.ac.hdg - o.hdg + 540) % 360) - 180);
       return m.index === 7 && o && distTo(m, o.x, o.z) < 330 && off < 10 && Math.abs(m.ac.bank) < 8;
     });
-    return { ms, view: 'chase', camera: { distance: 19, height: 7.5, side: 4, lookAhead: 40, lookDown: -10, fov: 64 } };
+    // the same moment at dusk, the sunset sky behind the volcano
+    ms.def = { ...ms.def, timeOfDay: 'dusk' };
+    // t: frozen between two flashes of the fin strobe, which shows from dusk on
+    return { ms, view: 'chase', t: 0.6, camera: { distance: 19, height: 7.5, side: 4, lookAhead: 40, lookDown: -10, fov: 64 } };
   },
   cockpit() {
     const ms = startMission(missionById('waterBomber'), {}, 1);

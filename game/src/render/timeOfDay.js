@@ -13,8 +13,8 @@ export const TIMES = {
     water: 0x2a87a8, waterDeep: 0x175a80, stars: 0, windows: 0, sunDisc: 0xffffff,
   },
   dusk: {
-    label: 'Dusk', skyTop: 0x3a3f78, skyHorizon: 0xff9a5a, fog: 0xc98c73, sun: 0xffa060, sunIntensity: 2.0,
-    sunDir: [0.7, 0.12, 0.55], hemiSky: 0x9a88c8, hemiGround: 0x4a3020, hemiIntensity: 0.95,
+    label: 'Dusk', skyTop: 0x3a3f78, skyHorizon: 0xff9a5a, fog: 0xc98c73, sun: 0xffa060, sunIntensity: 2.5,
+    sunDir: [0.7, 0.2, 0.55], hemiSky: 0xc0a8d8, hemiGround: 0x806040, hemiIntensity: 1.6,
     water: 0x3c5c82, waterDeep: 0x22385c, stars: 0.25, windows: 0.7, sunDisc: 0xffc070,
   },
   night: {

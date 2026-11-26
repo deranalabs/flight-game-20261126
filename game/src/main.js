@@ -207,7 +207,7 @@ function renderFlight(ms, dt, opts = {}) {
   model.visible = true;
   model.position.set(ac.pos.x, ac.pos.y, ac.pos.z);
   model.quaternion.set(ac.q.x, ac.q.y, ac.q.z, ac.q.w);
-  animateSeaplane(model, ac, game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit', night: w.time.windows > 0.6 });
+  animateSeaplane(model, ac, opts.t ?? game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit', night: w.time.windows > 0.6 });
   const wind = ms.env.wind.at(ac.pos, ac.t);
   const wl = Math.hypot(wind.x, wind.z) || 1;
   w.markers.update(ms, game.t, { x: wind.x / wl * 0.4, z: wind.z / wl * 0.4 });
@@ -274,7 +274,7 @@ function renderShot(dt) {
   const s = game.shot;
   if (s.view === 'hangar') { renderHangarScene(0); return; }
   game.view = s.view;
-  renderFlight(s.ms, 0, { landingLight: s.landingLight, camera: { ...(s.camera ?? {}), snap: true } });
+  renderFlight(s.ms, 0, { t: s.t, landingLight: s.landingLight, camera: { ...(s.camera ?? {}), snap: true } });
   s.frames = (s.frames ?? 0) + 1;
   if (s.frames === 3) { document.title = `${document.title} [shot ready]`; window.__shotReady = true; }
 }

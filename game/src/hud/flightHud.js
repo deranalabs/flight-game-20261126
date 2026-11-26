@@ -1,6 +1,7 @@
 // The head-up display over the view: heading tape, big airspeed and altitude, vertical
 // speed, the mission card with objective n of m and the clock, a north-up map with the
 // next target, wind, fuel and damage chips, the radio line with who is speaking, and
+// an objectives checklist, a score line with the job's pay and best landing, and
 // big banners for stalls, rings, drops and landings.
 
 import { MS_TO_KT, MS_TO_FPM } from '../flight/landingJudge.js';
@@ -275,6 +276,42 @@ function chips(ctx, W, ms, y) {
   return y + rows.length * 40;
 }
 
+function clip(ctx, s, w, size) {
+  ctx.font = `bold ${size}px ${FONT}`;
+  if (ctx.measureText(s).width <= w) return s;
+  while (s.length > 1 && ctx.measureText(`${s}…`).width > w) s = s.slice(0, -1);
+  return `${s.trimEnd()}…`;
+}
+
+// Objectives checklist: the last one done, the current one and what comes next, as many
+// rows as fit between the altitude box and the radio line.
+function checklist(ctx, ms, x, y, bottom) {
+  const rows = Math.min(4, Math.floor((bottom - y - 12) / 24));
+  if (rows < 2 || !ms.objectives.length) return;
+  const first = Math.max(0, Math.min(ms.index - 1, ms.objectives.length - rows));
+  const list = ms.objectives.slice(first, first + rows);
+  const w = 330;
+  box(ctx, x, y, w, 12 + list.length * 24);
+  list.forEach((o, k) => {
+    const i = first + k;
+    const done = i < ms.index;
+    const now = i === ms.index && ms.status === 'flying';
+    const col = done ? '#9ff0a8' : now ? AMBER : '#c9d3dc';
+    const cy = y + 18 + k * 24;
+    text(ctx, done ? '✓' : now ? '▶' : '○', x + 22, cy, 16, col, 'center');
+    text(ctx, clip(ctx, o.label(ms), w - 54, 16), x + 40, cy, 16, col);
+  });
+}
+
+// Score line: the job's pay and the best landing grade so far, both from the runner.
+function scoreLine(ctx, W, ms, y) {
+  const x = W - 222;
+  const best = ms.score.landings.reduce((b, l) => (!b || l.points > b.points ? l : b), null);
+  box(ctx, x, y, 206, 62);
+  text(ctx, `JOB PAY ${ms.def.pay} SH`, x + 12, y + 19, 17, AMBER);
+  text(ctx, best ? `LANDING ${best.letter} · ${best.points} PTS` : 'LANDING –', x + 12, y + 43, 16, best ? '#9ff0a8' : '#c9d3dc');
+}
+
 function radioBox(ctx, W, msg, bottom, left = 14) {
   if (!msg) return;
   // bottom left, beside the aircraft: never over the aircraft, the runway or the sky ahead
@@ -321,8 +358,10 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   bigReadout(ctx, 14, ry + 106, 'ALT', ft.toLocaleString('en-US'), 'FT', `AGL ${agl.toLocaleString('en-US')}  VS ${fpm > 0 ? '+' : ''}${fpm}`, agl < 150 && !ac.onSurface ? AMBER : INK);
   let y = miniMap(ctx, W, ms, 12);
   y = windBlock(ctx, W, ms, y + 4);
-  chips(ctx, W, ms, y);
+  y = chips(ctx, W, ms, y);
+  if (y + 72 < info.panelTop - 24) scoreLine(ctx, W, ms, y + 6);
   // in the cockpit the left column runs down to the glare shield, so the radio sits up top
+  checklist(ctx, ms, 14, ry + 212, info.view === 'cockpit' ? info.panelTop - 10 : info.panelTop - (info.radio ? 144 : 24));
   if (info.view === 'cockpit') radioBox(ctx, W, info.radio, 236, W / 2 - 195);
   else radioBox(ctx, W, info.radio, info.panelTop);
   if (info.banner) banner(ctx, W, H, info.banner.text, info.banner.color, info.banner.sub);
