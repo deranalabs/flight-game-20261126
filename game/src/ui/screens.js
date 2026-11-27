@@ -274,7 +274,7 @@ export function showDebrief(def, result, fuelBill, h, x) {
     ${cards ? `<div class="kick">REFIT · PICK ONE CARD, CHARGED TO THE NOTE</div><div class="cards">${cards}</div>` : ''}
     <div class="meta"><span class="chip">Time <b>${fmtTime(result.time)}</b></span><span class="chip">Cash pay <b>${result.pay} sh</b></span>
       <span class="chip">Fuel bill <b>${fuelBill} sh</b></span>${debtBar(x.career)}</div>
-    <div class="row"><button class="ghost" id="retry">Fly it again</button><button id="hangar">Back to the board (Enter)</button></div></div>`);
+    <div class="row"><button class="ghost" id="retry">Fly it again</button><button id="hangar">Back to the board (Enter)</button></div></div>`, 'screen');
   drawTraceChart(el.querySelector('canvas.chart'), x.trace);
   el.querySelectorAll('[data-refit]').forEach((b) => {
     b.onclick = () => { h.onRefit?.(b.dataset.refit); el.querySelectorAll('[data-refit]').forEach((c) => { c.disabled = true; }); b.classList.remove('ghost'); };

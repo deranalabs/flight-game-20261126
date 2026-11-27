@@ -146,3 +146,23 @@ td { padding: 3px 4px; font-weight: 700; border-bottom: 1px solid var(--rule); w
 .reachcols { display: grid; grid-template-columns: 520px 1fr; gap: 16px; min-height: 0; }
 .reachcols > div { overflow: hidden; max-height: 600px; }
 .reach .ledger td { white-space: normal; }
+
+/* the debrief is the Board's receipt: ledger-cream paper, basalt type, ember for what is owed */
+.brief.debrief { background: var(--ledger); color: var(--basalt); width: min(1010px, 90%); gap: 6px; padding-top: 12px; padding-bottom: 12px; box-shadow: inset 6px 0 0 var(--sulphur), 0 18px 40px rgba(0,0,0,0.45); }
+.debrief .kick, .debrief .quiet, .debrief .contract, .debrief .tip { color: rgba(22,18,15,0.78); }
+.debrief .grade, .debrief .grade.g-C, .debrief .grade.g-D, .debrief .grade.g-F, .debrief h1 { color: var(--basalt); }
+.debrief .total .kick b { color: var(--basalt); }
+.debrief .owed span { color: var(--basalt); }
+.debrief td { border-bottom-color: rgba(22,18,15,0.18); }
+.debrief td.pts, .debrief tr.sum td { color: var(--basalt); }
+.debrief .medal { color: rgba(22,18,15,0.7); background: rgba(22,18,15,0.07); }
+.debrief .medal.won { color: var(--basalt); }
+.debrief button.ghost { background: rgba(22,18,15,0.1); color: var(--basalt); }
+.debrief .refit em { color: var(--ember); }
+.debrief .refit i { color: rgba(22,18,15,0.65); }
+.debrief .total { white-space: nowrap; }
+.debrief .owed { font-size: 100px; }
+.debrief .chartbox { background: var(--basalt); }
+.debrief .dhead { gap: 14px; }
+.debrief .chip { background: rgba(22,18,15,0.08); color: var(--basalt); }
+.debrief .chip b { color: var(--basalt); }

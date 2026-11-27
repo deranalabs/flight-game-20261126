@@ -12,7 +12,9 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const chrome = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const base = process.env.SHOT_BASE ?? 'http://127.0.0.1:8126/';
-const shots = JSON.parse(readFileSync(join(root, 'shots.json'), 'utf8'));
+// ONLY=2,4 re-renders just those shots (by their leading number)
+const only = process.env.ONLY?.split(',');
+const shots = JSON.parse(readFileSync(join(root, 'shots.json'), 'utf8')).filter((s) => !only || only.includes(s.name.split('-')[0]));
 const tmp = join(root, 'out', 'shots-tmp');
 mkdirSync(tmp, { recursive: true });
 

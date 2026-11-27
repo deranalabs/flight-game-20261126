@@ -4,7 +4,7 @@
 // fly the sorties before it, so those numbers are the bot's real career.
 //   cover   - Cinder Ring Trial at dusk, chase view, about to fly ring 8 with the runway beyond
 //   fire    - Tallow Ridge Fire, chase view, the second fire just knocked out, drop meter
-//   final   - Saltmoor Medevac, chase view, short final with the approach callouts
+//   final   - Saltmoor Medevac, chase view, short final with the approach callouts, in day light
 //   receipt - the stamped receipt after the bot's Harbour Board Survey
 //   cockpit - Tallow Ridge Fire, cockpit view, low run-in on a burning slope, live score and combo
 //   debrief - the debrief after the bot's sortie 4 (Ridge strip), grade, lines and flight chart
@@ -99,6 +99,8 @@ export const SHOTS = {
       const o = currentObjective(m);
       return o && o.kind === 'land' && m.ac.agl * 3.28084 < 260 && m.ac.agl > 30 && distTo(m, o.rw.x, o.rw.z) < 1400;
     });
+    // the same moment in day light, so water, lane and Tern read in a small cell (the sortie flies at dusk)
+    ms.def = { ...ms.def, timeOfDay: 'day' };
     return { ms, career: flyCareer(2).career, view: 'chase', camera: { ...LOW_CHASE, lookDown: -8 } };
   },
   receipt() {
