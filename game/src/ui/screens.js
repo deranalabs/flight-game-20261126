@@ -18,6 +18,8 @@ import { MAX, improveTip } from '../hangar/sortieScore.js';
 import { TOKENS, WORDMARK, SERVICE, stamp } from '../identity/palette.js';
 import { contractFor, MISSION_TYPES, CHOICE } from '../story/storyline.js';
 import { PEOPLE, personState, clerkPatience } from '../world/cast.js';
+import { findSpots } from '../world/gazetteer.js';
+import { ISLANDS } from '../terrain/islandLayout.js';
 import { FEATS, featsEarned } from '../hangar/feats.js';
 import { REFITS, refitsFitted } from '../hangar/refits.js';
 
@@ -135,7 +137,7 @@ export function showHangar(career, castStates, h) {
       <div class="logo">${WORDMARK}<small>${SERVICE}</small></div>
       <div class="owed-block">${stampTag(left ? 'DUE' : 'PAID', 104)}<div><div class="kick">CH ${ch.no} · ${esc(ch.title)} · ${done}/${MISSIONS.length} FLOWN</div><div class="owed">${sh(left)}<span> SH OWED</span></div></div></div>
       <div class="counts"><div><b>${featsEarned(career)}<i>/${FEATS.length}</i></b>FEATS</div><div><b>${refitsFitted(career)}<i>/${REFITS.length}</i></b>REFITS</div>
-        <div><b>${sh(career.cash)}</b>CASH SH</div></div>
+        <div><b>${Object.keys(career.finds ?? {}).length}<i>/${findSpots(ISLANDS).length}</i></b>FINDS</div><div><b>${sh(career.cash)}</b>CASH SH</div></div>
     </div>
     <div class="cols">
       <div class="card panel board"><h2>CONTRACTS <span>${esc(ch.plate)}</span></h2>${missionRows}</div>

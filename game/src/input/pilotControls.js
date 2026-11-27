@@ -19,6 +19,7 @@ export const KEY_HELP = [
   ['Z', 'Autopilot: hold heading and height'],
   ['R', 'Restart a stopped engine'],
   ['L', 'Landing light'],
+  ['J / N', 'At bingo fuel: jettison the load / divert'],
   ['[ / ]', 'Pitch trim'],
   ['Esc / P', 'Pause'],
 ];
@@ -86,6 +87,8 @@ export function makePilotControls(target = window) {
       restart: pressed.has('KeyR'),
       autopilot: pressed.has('KeyZ'),
       light: pressed.has('KeyL'),
+      jettison: pressed.has('KeyJ'),
+      divert: pressed.has('KeyN'),
       pause: pressed.has('Escape') || pressed.has('KeyP') || pad.pause,
       any: pressed.size > 0,
       help: pressed.has('KeyH'),

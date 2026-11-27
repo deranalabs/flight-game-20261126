@@ -5,10 +5,10 @@
 
 import { applyPaletteToCss, TOKENS } from './identity/palette.js';
 import { CHAPTERS, contractFor, MISSION_TYPES, CHOICE, objectiveHeadline } from './story/storyline.js';
-import { islandById } from './world/gazetteer.js';
+import { islandById, findSpots, FIND_PAY } from './world/gazetteer.js';
 import { personState } from './world/cast.js';
 import { eventFor } from './world/events.js';
-import { settleSortie, debtLeft, chapterFor, squeezeSortie } from './hangar/harbourDebt.js';
+import { settleSortie, debtLeft, chapterFor, squeezeSortie, chargeDebt, payDebt } from './hangar/harbourDebt.js';
 import { awardFeats } from './hangar/feats.js';
 import { refitOffer, fitRefit } from './hangar/refits.js';
 import { callsFor } from './feedback/liveCalls.js';
@@ -29,7 +29,7 @@ import { showTitle, showHangar, showBriefing, showDebrief, showPause, clearScree
 import { SHOTS, readShotRequest } from './shots/shotMode.js';
 import { flyHeading, makeAutopilot } from './flight/autopilot.js';
 import { stallSpeed } from './aircraft/ternSpec.js';
-import { LANDMARKS, RUNWAYS } from './terrain/islandLayout.js';
+import { LANDMARKS, RUNWAYS, ISLANDS } from './terrain/islandLayout.js';
 import { scoreSortie, recordScore, nextMultiplier } from './hangar/sortieScore.js';
 import { currentApproach } from './flight/glidepath.js';
 import * as THREE from 'three';
@@ -41,6 +41,12 @@ const PLATE_SECONDS = 2.4;
 /** Seconds of key hints at the start of a sortie, below Expert. */
 const HINT_SECONDS = 60;
 const HINTS = [['W / S', 'nose down / up'], ['A / D', 'roll'], ['SHIFT / CTRL', 'throttle'], ['F / V', 'flaps'], ['C', 'camera']];
+const FINDS = findSpots(ISLANDS);
+/** A find counts when the Tern passes within this many metres, below FIND_AGL metres. */
+const FIND_RANGE = 140;
+const FIND_AGL = 160;
+/** Bingo: under this fuel share the decision box opens for this many seconds; cargo lost costs per kg. */
+const BINGO = { frac: 0.15, seconds: 10, perKg: 1.5 };
 /** Easy assist: rudder follows the slip, and the stick eases off near the stall. */
 const EASY_COORD = 3;
 const EASY_STALL_EASE = 0.4;
@@ -175,6 +181,46 @@ function endFlight() {
   statusLine.textContent = `${ms.def.title}: ${result.done ? `${result.stars} stars` : 'failed'}`;
 }
 
+/**
+ * The bingo decision: the first time fuel drops under the bingo share, a box offers to
+ * jettison the load (lighter, but the Board charges the lost cargo), to divert (the
+ * contract is lost, the Tern is safe) or, by waiting it out, to press on.
+ */
+function bingoDecision(ms, actions) {
+  const ac = ms.ac;
+  const frac = ac.fuel.litres / ac.fuel.capacity;
+  if (!ms.extra.bingo && frac < BINGO.frac && !ac.onSurface) ms.extra.bingo = { at: ms.t, open: true };
+  const b = ms.extra.bingo;
+  if (!b || !b.open) return;
+  if (ms.t > b.at + BINGO.seconds) { b.open = false; b.choice = 'press'; return; }
+  if (actions.jettison) {
+    b.open = false; b.choice = 'jettison';
+    const cost = Math.round(BINGO.perKg * (ac.payloadKg + ac.waterKg));
+    ac.payloadKg = 0; ac.waterKg = 0;
+    if (cost) chargeDebt(game.career, cost, `${ms.def.title}: load jettisoned`);
+    game.banner = { text: 'LOAD JETTISONED', color: TOKENS.sulphur, sub: `${cost} sh charged to the note · lighter, longer glide`, until: ms.t + 3 };
+  } else if (actions.divert) {
+    b.open = false; b.choice = 'divert';
+    ms.fail('Diverted at bingo fuel: the contract goes to another pilot');
+  }
+}
+
+/** Hidden finds: a low pass over one books it, pays a little of the note and logs it. */
+function spotFinds(ms) {
+  const ac = ms.ac;
+  if (ac.agl > FIND_AGL || ms.steps % 15) return;
+  const c = game.career;
+  c.finds ??= {};
+  for (const f of FINDS) {
+    if (c.finds[f.id] || Math.hypot(ac.pos.x - f.x, ac.pos.z - f.z) > FIND_RANGE) continue;
+    c.finds[f.id] = true;
+    payDebt(c, { done: true, total: FIND_PAY }, `Found ${f.name}`);
+    c.logbook.unshift({ n: c.flights, id: 'find', title: `Found ${f.name}`, done: true, stars: 0, time: 0, landing: '-', pay: FIND_PAY, fuelBill: 0, damage: 0, note: islandById(f.island).name });
+    saveCareer(c);
+    game.toast = { text: `FOUND ${f.name.toUpperCase()} · +${FIND_PAY} SH · ${Object.keys(c.finds).length}/${FINDS.length}`, until: ms.t + 3 };
+  }
+}
+
 function pause() {
   game.mode = 'paused';
   showPause({
@@ -228,6 +274,8 @@ function flyFrame(dt) {
     if (ms.status !== 'flying') break;
   }
   if (actions.drop) sound.event('drop');
+  bingoDecision(ms, actions);
+  spotFinds(ms);
   if (ms.index > before) {
     const done = ms.objectives[ms.index - 1];
     sound.event(done.kind === 'ring' ? 'ring' : 'success');
@@ -258,7 +306,7 @@ function lighthouseOn(ms) {
   return true;
 }
 
-function renderFlight(ms, dt, opts = {}) {
+function renderFlight(ms, dt, opts = {}) { // opts is reassigned below for the cinematic cut
   const w = game.world;
   const ac = ms.ac;
   const model = w.plane;
@@ -275,7 +323,10 @@ function renderFlight(ms, dt, opts = {}) {
   w.props.userData.smoke.userData.tick(clock, wind.x / wl, wind.z / wl, chapterFor(ms.def.order, MISSIONS.length).volcano);
   w.life.userData.tick(clock, wind.x / 12, wind.z / 12);
   w.water.userData.tick(clock);
-  rig.mode = game.view;
+  // the cinematic cut: an orbit while the chapter plate is up, and again once the job is done
+  const cinematic = !opts.camera && (clock < PLATE_SECONDS || ms.status === 'done');
+  rig.mode = cinematic ? 'orbit' : game.view;
+  if (cinematic) opts = { ...opts, camera: { t: clock * 3 + 4, radius: 24 } };
   rig.look = input.look;
   rig.update(ac, dt, opts.camera ?? {});
   w.effects.update(dt, clock, camera, ac, ms.extra.flashAt);
@@ -294,6 +345,7 @@ function renderFlight(ms, dt, opts = {}) {
     calls: callsFor(ms, currentApproach(ms)), scope: SCOPE,
     plate: opts.plate ?? (game.plate && clock < game.plate.until ? game.plate : null),
     hints: !opts.t && game.assist !== 'expert' && clock < HINT_SECONDS && clock > PLATE_SECONDS ? HINTS : null,
+    bingo: ms.extra.bingo?.open ? { left: Math.max(0, Math.ceil(ms.extra.bingo.at + BINGO.seconds - clock)), cost: Math.round(BINGO.perKg * (ac.payloadKg + ac.waterKg)) } : null,
     panelTop: panel.top, banner, radio: ms.radio.current,
     toast: game.toast && clock < game.toast.until ? game.toast.text : null,
     rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,

@@ -1,10 +1,13 @@
 // The Reach going about its day around the aircraft, all cheap instanced props built once
 // and moved in place each frame (no allocation in tick): fishing boats working the lanes,
 // the Halyard-Saltmoor ferry on its timetable, gulls wheeling off the coast, windsocks on
-// every water lane that swing with the real wind, and quay lamps that light from dusk.
+// every water lane that swing with the real wind, quay lamps that light from dusk, and the
+// hidden finds on every island: a wreck, a shrine, a lost mail drop.
 
 import * as THREE from 'three';
-import { RUNWAYS, LANDMARKS } from '../terrain/islandLayout.js';
+import { RUNWAYS, LANDMARKS, ISLANDS } from '../terrain/islandLayout.js';
+import { groundHeight } from '../terrain/heightmap.js';
+import { findSpots } from '../world/gazetteer.js';
 import { glowSprite } from './glowSprite.js';
 
 const BOATS = 14;
@@ -87,6 +90,31 @@ export function buildHarbourLife(time) {
       glow.position.set(x, 6.4, z);
       g.add(glow);
     }
+  }
+
+  // the hidden finds: small, but each with a sulphur mark so a low pass can spot it
+  for (const f of findSpots(ISLANDS)) {
+    const y = Math.max(0, groundHeight(f.x, f.z));
+    const thing = new THREE.Group();
+    if (f.kind === 'wreck') {
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(5, 2.4, 16), lambert(0x3b2f26));
+      hull.rotation.set(0.25, 0.6, 0.4);
+      thing.add(hull);
+    } else if (f.kind === 'shrine') {
+      const stone = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2, 6, 6), lambert(0x9a9088));
+      stone.position.y = 3;
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(2.2, 2, 6), lambert(0xf2c230));
+      cap.position.y = 7;
+      thing.add(stone, cap);
+    } else {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 3), lambert(0x8a6a44));
+      crate.position.y = 1;
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 2), lambert(0xf2c230));
+      flag.position.set(0, 3.5, 1);
+      thing.add(crate, flag);
+    }
+    thing.position.set(f.x, y + 0.5, f.z);
+    g.add(thing);
   }
 
   g.userData.tick = (t, windX, windZ) => {

@@ -570,9 +570,23 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   else if (ac.onSurface && ac.ias > (info.rotateSpeed ?? 27) && ac.controls.throttle > 0.5) banner(ctx, W, H, 'ROTATE', CYAN, 'Hold S or Down to lift the nose');
   else if (!ac.onSurface && ac.agl < 12 && ac.vs < -1.2 && ac.ias < 40) banner(ctx, W, H, 'FLARE', CYAN, 'Ease back and close the throttle');
   if (info.hints) keyHints(ctx, W, info.panelTop, info.hints);
+  if (info.bingo) bingoBox(ctx, W, info.panelTop, info.bingo);
   const help = `${info.view.toUpperCase()} VIEW · C camera · F flaps · Space drop · Esc pause`;
   text(ctx, help, W - 16, info.panelTop - 12, 13, PANEL.dim, 'right');
   scopeStrip(ctx, W, info.scope, info.panelTop - 46, 412, W - 16 - measure(ctx, help, 13) - 14);
+}
+
+// The bingo decision, each option priced against the note; waiting it out presses on.
+function bingoBox(ctx, W, bottom, b) {
+  const w = 520;
+  const x = W / 2 - w / 2;
+  const y = bottom - 250;
+  box(ctx, x, y, w, 150, { fill: PANEL.panelDeep, tab: AMBER, cut: 16 });
+  text(ctx, 'BINGO FUEL', x + 22, y + 30, 40, AMBER, 'left', 'display');
+  text(ctx, `PRESS ON IN ${b.left}`, x + w - 20, y + 30, 18, INK, 'right', 'numeral');
+  text(ctx, `J  JETTISON THE LOAD  ·  ${b.cost} SH ON THE NOTE`, x + 22, y + 72, 18, INK);
+  text(ctx, 'N  DIVERT  ·  LOSE THE CONTRACT, KEEP THE TERN', x + 22, y + 100, 18, INK);
+  text(ctx, '…  PRESS ON  ·  LAND BEFORE THE TANK RUNS DRY', x + 22, y + 128, 18, MUTED);
 }
 
 // The first minute of a sortie: the keys, so the pilot learns by flying.
