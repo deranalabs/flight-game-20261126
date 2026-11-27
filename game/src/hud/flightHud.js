@@ -2,7 +2,8 @@
 // speed, the mission card with objective n of m and the clock, a north-up map with the
 // next target, wind, fuel and damage chips, the radio line with who is speaking, and
 // an objectives checklist, a score line with the job's pay and best landing, and
-// big banners for stalls, rings, drops and landings.
+// big banners for stalls, drops and landings, a ring-cleared toast, and on a landing
+// approach the PAPI lights and a glideslope ladder.
 
 import { MS_TO_KT, MS_TO_FPM } from '../flight/landingJudge.js';
 import { enduranceMinutes } from '../systems/fuelTank.js';
@@ -11,6 +12,7 @@ import { groundHeight } from '../terrain/heightmap.js';
 import { WORLD_HALF, RUNWAYS, VILLAGES, LANDMARKS, ISLANDS } from '../terrain/islandLayout.js';
 import { fmtTime, currentObjective } from '../missions/missionRunner.js';
 import { bearingTo } from '../flight/autopilot.js';
+import { currentApproach, papiWhite } from '../flight/glidepath.js';
 
 const FONT = '"Trebuchet MS", "Segoe UI", Arial, sans-serif';
 const INK = '#f4f7ef';
@@ -303,13 +305,68 @@ function checklist(ctx, ms, x, y, bottom) {
   });
 }
 
-// Score line: the job's pay and the best landing grade so far, both from the runner.
+// Score line: the job's pay, then what the runner has counted so far: the best landing
+// grade once there is one, else the ring streak on a ring job or the drops on a drop job.
 function scoreLine(ctx, W, ms, y) {
   const x = W - 222;
-  const best = ms.score.landings.reduce((b, l) => (!b || l.points > b.points ? l : b), null);
+  const sc = ms.score;
+  const best = sc.landings.reduce((b, l) => (!b || l.points > b.points ? l : b), null);
+  const rings = ms.objectives.filter((o) => o.kind === 'ring').length;
+  const drops = ms.objectives.filter((o) => o.kind === 'drop').length;
+  let line = ['LANDING –', '#c9d3dc'];
+  if (best) line = [`LANDING ${best.letter} · ${best.points} PTS`, '#9ff0a8'];
+  else if (rings) line = [`STREAK ${sc.ringStreak} · MISSED ${sc.ringMisses}`, sc.ringMisses ? AMBER : '#9ff0a8'];
+  else if (drops) line = [`DROPS ${sc.drops.length}/${drops} · MISSED ${sc.misses}`, sc.misses ? AMBER : '#9ff0a8'];
   box(ctx, x, y, 206, 62);
   text(ctx, `JOB PAY ${ms.def.pay} SH`, x + 12, y + 19, 17, AMBER);
-  text(ctx, best ? `LANDING ${best.letter} · ${best.points} PTS` : 'LANDING –', x + 12, y + 43, 16, best ? '#9ff0a8' : '#c9d3dc');
+  text(ctx, line[0], x + 12, y + 43, 16, line[1]);
+}
+
+/** Toast text for a cleared ring: its number and the count from the objective list. */
+export function ringClearedText(ms, o) {
+  const rings = ms.objectives.filter((x) => x.kind === 'ring');
+  return `RING ${rings.indexOf(o) + 1}/${rings.length} CLEARED`;
+}
+
+// Ring-cleared toast: small, just under the heading box, above the sky ahead.
+function toast(ctx, W, s) {
+  ctx.font = `bold 22px ${FONT}`;
+  const w = ctx.measureText(s).width + 36;
+  box(ctx, W / 2 - w / 2, 108, w, 38, 'rgba(10,16,24,0.78)', 10);
+  text(ctx, s, W / 2, 128, 22, '#7ee08f', 'center');
+}
+
+// Glideslope ladder on a landing approach: four PAPI lights and a scale of ±1.5° about
+// the 4° path with a diamond for where the aircraft sits against the path. Left of the right column, below
+// its top cards, so the runway ahead and the aircraft stay clear.
+function approachLadder(ctx, W, ms, y, bottom) {
+  const ap = currentApproach(ms);
+  const h = 210;
+  if (!ap || y + h > bottom) return;
+  const x = W - 222 - 92;
+  box(ctx, x, y, 80, h);
+  text(ctx, 'PAPI', x + 40, y + 16, 16, AMBER, 'center');
+  const white = papiWhite(ap.dev);
+  for (let i = 0; i < 4; i++) {
+    // lights read left to right: the white ones are on the left, like the real bar
+    ctx.fillStyle = i < white ? '#ffffff' : '#ff3b30';
+    ctx.beginPath(); ctx.arc(x + 13 + i * 18, y + 36, 6.5, 0, Math.PI * 2); ctx.fill();
+  }
+  const top = y + 56;
+  const span = 120;
+  const mid = top + span / 2;
+  ctx.strokeStyle = INK; ctx.lineWidth = 2;
+  for (let k = -3; k <= 3; k++) {
+    const ly = mid + (k * span) / 6;
+    const len = k === 0 ? 30 : k % 2 ? 10 : 18;
+    ctx.beginPath(); ctx.moveTo(x + 40 - len, ly); ctx.lineTo(x + 40 + len, ly); ctx.stroke();
+  }
+  // high above the path shows the diamond above the centre line
+  const dy = Math.max(-1.5, Math.min(1.5, ap.dev)) * (span / 3);
+  ctx.fillStyle = Math.abs(ap.dev) < 0.4 ? '#7ee08f' : AMBER;
+  ctx.beginPath(); ctx.moveTo(x + 40, mid - dy - 9); ctx.lineTo(x + 49, mid - dy); ctx.lineTo(x + 40, mid - dy + 9); ctx.lineTo(x + 31, mid - dy); ctx.closePath(); ctx.fill();
+  const word = ap.dev > 0.4 ? 'HIGH' : ap.dev < -0.4 ? 'LOW' : 'ON';
+  text(ctx, `${word} ${ap.angle.toFixed(1)}°`, x + 40, y + h - 16, 16, Math.abs(ap.dev) < 0.4 ? '#9ff0a8' : AMBER, 'center');
 }
 
 // Title and scope strip: on the key-help row if it fits there, else right-aligned just
@@ -385,7 +442,7 @@ function banner(ctx, W, H, s, color, sub) {
 
 /**
  * Draw the whole HUD for one frame. info: { missionNo, missionCount, view, panelTop,
- * banner: {text, color, sub}?, radio }.
+ * banner: {text, color, sub}?, toast: string?, radio }.
  */
 export function drawFlightHud(ctx, W, H, ms, info) {
   const ac = ms.ac;
@@ -405,6 +462,8 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   y = chips(ctx, W, ms, y);
   if (y + 72 < info.panelTop - 24) { scoreLine(ctx, W, ms, y + 6); y += 68; }
   ringTag(ctx, ms, info);
+  approachLadder(ctx, W, ms, 236, info.panelTop - 24);
+  if (info.toast) toast(ctx, W, info.toast);
   // in the cockpit the left column runs down to the glare shield, so the radio sits up top
   checklist(ctx, ms, 14, ry + 212, info.view === 'cockpit' ? info.panelTop - 10 : info.panelTop - (info.radio ? 144 : 24));
   if (info.view === 'cockpit') radioBox(ctx, W, info.radio, 236, W / 2 - 195);

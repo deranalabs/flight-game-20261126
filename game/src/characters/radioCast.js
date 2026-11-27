@@ -19,6 +19,7 @@ const GENERIC = {
   stall: [['marta', 'Stall horn on your frequency! Nose down, wings level.']],
   damage: [['teodor', 'I heard that from here. She is flying hurt, take it gently.']],
   miss: [['wren', 'That one landed {miss} metres off {name}. Try releasing a touch earlier.']],
+  ringMiss: [['junie', 'Missed {name}! Swing round and fly through the middle.']],
   fireHit: [['oren', 'Good drop on {name}! That knocked it right down.']],
   fireMiss: [['oren', 'Mostly steam and hillside. Lower and slower over {name}.']],
   hardLanding: [['marta', 'That was a firm arrival, Tern. Teodor will want to see those floats.']],

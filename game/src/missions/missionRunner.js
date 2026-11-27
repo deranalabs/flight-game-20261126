@@ -36,7 +36,7 @@ export function startMission(def, career = {}, seed = 1) {
     t: 0,
     status: 'flying',
     failReason: null,
-    score: { drops: [], misses: 0, waterDrops: [], landings: [], damageStart: { ...ac.damage }, fuelStart: ac.fuel.litres },
+    score: { drops: [], misses: 0, ringStreak: 0, bestStreak: 0, ringMisses: 0, waterDrops: [], landings: [], damageStart: { ...ac.damage }, fuelStart: ac.fuel.litres },
     loads: [],
     splashes: [],
     extra: {},
@@ -103,7 +103,9 @@ export function stepMission(ms, actions = {}, opts = {}) {
   }
   if (ms.status !== 'flying') return ms;
 
-  if (obj && obj.update(ctx)) {
+  const cleared = !!obj && obj.update(ctx);
+  if (obj && obj.kind === 'ring') ringStreak(ms, obj, cleared);
+  if (cleared) {
     obj.doneAt = ms.t;
     ms.index += 1;
     const lines = ms.def.radio?.[`obj${ms.index}`];
@@ -123,6 +125,26 @@ export function stepMission(ms, actions = {}, opts = {}) {
     ms.fail('Out of fuel and drifting: the rescue boat towed you home');
   }
   return ms;
+}
+
+// Rings flown in a row: a clear adds one; coming within four radii of the ring and
+// leaving again without going through is a miss and resets the streak.
+function ringStreak(ms, o, cleared) {
+  const sc = ms.score;
+  if (cleared) {
+    sc.ringStreak += 1;
+    sc.bestStreak = Math.max(sc.bestStreak, sc.ringStreak);
+    return;
+  }
+  const p = ms.ac.pos;
+  const near = Math.hypot(p.x - o.x, p.y - o.y, p.z - o.z) < o.r * 4;
+  if (near) o.wasNear = true;
+  else if (o.wasNear) {
+    o.wasNear = false;
+    sc.ringMisses += 1;
+    sc.ringStreak = 0;
+    ms.say('ringMiss', { name: o.name ?? 'the ring' });
+  }
 }
 
 function warnings(ms) {

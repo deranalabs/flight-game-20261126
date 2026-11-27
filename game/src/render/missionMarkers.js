@@ -1,9 +1,11 @@
 // What a mission puts in the world: numbered rings, smoke-flare drop targets, burning
-// fires with their smoke, falling sacks and water, splashes, and a beacon on the next goal.
+// fires with their smoke, falling sacks and water, splashes, a beacon on the next goal,
+// and on a landing approach PAPI lights beside the field and a glideslope ladder.
 
 import * as THREE from 'three';
 import { glowSprite } from './glowSprite.js';
 import { groundHeight } from '../terrain/heightmap.js';
+import { currentApproach, aimPoint, fieldElevation, papiWhite, GLIDE_DEG } from '../flight/glidepath.js';
 
 function numberTexture(text, color) {
   const cv = document.createElement('canvas');
@@ -133,6 +135,42 @@ function buildFire(o) {
   return g;
 }
 
+const RUNG_STEP = 300;
+const RUNGS = 8;
+
+// PAPI bar on the left of the aim point and ladder rungs every 300 m up the approach
+// path. Local frame: x to the right of the landing direction, -z along it.
+function buildApproach(rw, hdg) {
+  const g = new THREE.Group();
+  const a = (hdg * Math.PI) / 180;
+  const fx = Math.sin(a);
+  const fz = -Math.cos(a);
+  const toAim = -rw.length / 2 + aimPoint(rw);
+  g.position.set(rw.x + fx * toAim, fieldElevation(rw), rw.z + fz * toAim);
+  g.rotation.y = -a;
+  const lights = [];
+  for (let i = 0; i < 4; i++) {
+    const s = glowSprite(0xff3020, 26);
+    s.position.set(-(rw.width / 2 + 16 + i * 10), 2, 0);
+    lights.push(s);
+    g.add(s);
+  }
+  const rungMat = new THREE.MeshBasicMaterial({ color: 0x5fe3ff, transparent: true, opacity: 0.6, depthWrite: false });
+  const rungGeo = new THREE.BoxGeometry(40, 2.5, 2.5);
+  const rungs = [];
+  const slope = Math.tan((GLIDE_DEG * Math.PI) / 180);
+  for (let k = 1; k <= RUNGS; k++) {
+    const d = k * RUNG_STEP;
+    const m = new THREE.Mesh(rungGeo, rungMat);
+    m.position.set(0, d * slope, d);
+    m.userData.d = d;
+    rungs.push(m);
+    g.add(m);
+  }
+  g.userData = { kind: 'approach', lights, rungs };
+  return g;
+}
+
 /** Keep the 3D markers in step with the mission's objectives and loose loads. */
 export function makeMarkerLayer(scene, night) {
   const group = new THREE.Group();
@@ -148,6 +186,7 @@ export function makeMarkerLayer(scene, night) {
   const beacon = glowSprite(0x7fe0ff, 40);
   beacon.visible = false;
   group.add(beacon);
+  const approaches = new Map();
 
   function update(ms, t, wind) {
     const ringIndex = new Map();
@@ -192,6 +231,21 @@ export function makeMarkerLayer(scene, night) {
       beacon.position.set(rw.x, y, rw.z);
       beacon.visible = true;
     } else beacon.visible = false;
+
+    // PAPI and ladder only while lined up on the approach to a landing objective
+    const ap = currentApproach(ms);
+    for (const g of approaches.values()) g.visible = false;
+    if (ap) {
+      const key = `${ap.rw.id ?? ap.rw.name}:${ap.hdg}`;
+      let g = approaches.get(key);
+      if (!g) { g = buildApproach(ap.rw, ap.hdg); approaches.set(key, g); group.add(g); }
+      g.visible = true;
+      const white = papiWhite(ap.dev);
+      // the outer lights turn white first, as on a real bar: two white, two red on slope
+      g.userData.lights.forEach((l, i) => l.material.color.setHex(i >= 4 - white ? 0xffffff : 0xff3020));
+      // rungs ahead of the aircraft only, and none in the last 250 m in front of it
+      for (const r of g.userData.rungs) r.visible = r.userData.d < ap.toAim - 250;
+    }
 
     // loose loads: sacks and water
     while (loads.children.length < ms.loads.length) loads.add(new THREE.Mesh(sackGeo, sackMat));

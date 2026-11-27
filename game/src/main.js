@@ -7,7 +7,7 @@ import { MISSIONS, missionById } from './missions/index.js';
 import { STEP } from './flight/flightModel.js';
 import { animateSeaplane } from './aircraft/seaplaneModel.js';
 import { drawInstrumentPanel } from './instruments/instrumentPanel.js';
-import { drawFlightHud, objectiveBearing } from './hud/flightHud.js';
+import { drawFlightHud, objectiveBearing, ringClearedText } from './hud/flightHud.js';
 import { startMission, stepMission, missionResult, currentObjective } from './missions/missionRunner.js';
 import { loadCareer, saveCareer, recordFlight, repairAll, repairPart, buyUpgrade } from './hangar/careerSave.js';
 import { buildWorld, makeRenderer } from './render/worldScene.js';
@@ -47,6 +47,7 @@ const game = {
   last: performance.now(),
   t: 0,
   banner: null,
+  toast: null,
   endAt: null,
   shot: null,
   selected: null,
@@ -109,6 +110,7 @@ function startFlight(def) {
   game.landingLight = def.timeOfDay === 'night';
   game.mode = 'flying';
   game.endAt = null;
+  game.toast = null;
   game.banner = { text: def.title.toUpperCase(), color: '#ffbf3c', sub: currentObjective(game.ms).label(game.ms), until: game.t + 4 };
   statusLine.textContent = `Flying ${def.title}`;
 }
@@ -177,7 +179,9 @@ function flyFrame(dt) {
     const done = ms.objectives[ms.index - 1];
     sound.event(done.kind === 'ring' ? 'ring' : 'success');
     const next = currentObjective(ms);
-    game.banner = { text: done.kind === 'ring' ? 'RING CLEARED' : 'OBJECTIVE DONE', color: '#7ee08f', sub: next ? next.label(ms) : 'Mission complete', until: game.t + 3 };
+    // a ring gets a small toast up top, so the big banner never hides the next ring
+    if (done.kind === 'ring') game.toast = { text: ringClearedText(ms, done), until: game.t + 2 };
+    else game.banner = { text: 'OBJECTIVE DONE', color: '#7ee08f', sub: next ? next.label(ms) : 'Mission complete', until: game.t + 3 };
   }
   if (ms.radio.current && ms.radio.current !== game.lastRadio) { game.lastRadio = ms.radio.current; sound.event('radio'); }
   if (ms.extra.flashAt && ms.extra.flashAt !== game.lastFlash) { game.lastFlash = ms.extra.flashAt; sound.event('thunder'); }
@@ -227,6 +231,7 @@ function renderFlight(ms, dt, opts = {}) {
   drawFlightHud(hud, W, H, ms, {
     missionNo: ms.def.order, missionCount: MISSIONS.length, view: game.view,
     panelTop: panel.top, banner, radio: ms.radio.current,
+    toast: game.toast && game.t < game.toast.until ? game.toast.text : null,
     rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,
     project: (x, y, z) => {
       const v = new THREE.Vector3(x, y, z).project(camera);
