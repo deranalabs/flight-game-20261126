@@ -300,7 +300,7 @@ function buildHangar() {
   roof.position.y = 11;
   const door = new THREE.Mesh(new THREE.PlaneGeometry(30, 9.5), new THREE.MeshBasicMaterial({ color: 0x16191c }));
   door.position.set(0, 4.8, 15.05);
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 3.6), new THREE.MeshBasicMaterial({ map: textTexture(['TIDEWING AIR SERVICE'], 512, 72, '#c0392b', '#fff6e0', 'bold 40px sans-serif') }));
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 3.6), new THREE.MeshBasicMaterial({ map: textTexture(['TIDEWING AIR SERVICE'], 512, 72, '#16120f', '#f2c230', 'bold 40px sans-serif') }));
   sign.position.set(0, 13.2, 15.2);
   g.add(body, roof, door, sign);
   g.position.set(H.x, base, H.z);
@@ -377,14 +377,15 @@ function buildVolcanoSmoke(time, rnd) {
     puffs.push(s);
     g.add(s);
   }
-  g.userData.tick = (t, windX, windZ) => {
+  // strength 0..1: the mountain grows angrier chapter by chapter (storyline volcano)
+  g.userData.tick = (t, windX, windZ, strength = 0.5) => {
     for (const s of puffs) {
       const p = (s.userData.phase + t * 0.012) % 1;
-      const h = p * 900;
+      const h = p * (600 + strength * 700);
       s.position.set(c.x + windX * h * 0.9 + s.userData.drift * 60 * p, top + 20 + h, c.z + windZ * h * 0.9 + s.userData.drift * 40);
-      const size = 160 + p * 640;
+      const size = (110 + strength * 110) + p * (420 + strength * 480);
       s.scale.set(size, size, 1);
-      s.material.opacity = 0.75 * (1 - p) * Math.min(1, p * 8);
+      s.material.opacity = (0.45 + strength * 0.4) * (1 - p) * Math.min(1, p * 8);
     }
   };
   return g;

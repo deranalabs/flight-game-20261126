@@ -272,7 +272,8 @@ function renderFlight(ms, dt, opts = {}) {
   const wl = Math.hypot(wind.x, wind.z) || 1;
   w.markers.update(ms, clock, { x: wind.x / wl * 0.4, z: wind.z / wl * 0.4 });
   w.props.userData.lighthouse.userData.tick(clock, lighthouseOn(ms));
-  w.props.userData.smoke.userData.tick(clock, wind.x / wl, wind.z / wl);
+  w.props.userData.smoke.userData.tick(clock, wind.x / wl, wind.z / wl, chapterFor(ms.def.order, MISSIONS.length).volcano);
+  w.life.userData.tick(clock, wind.x / 12, wind.z / 12);
   w.water.userData.tick(clock);
   rig.mode = game.view;
   rig.look = input.look;
@@ -314,6 +315,7 @@ function renderHangarScene(dt) {
   animateSeaplane(w.plane, { controls: { aileron: 0, elevator: 0, rudder: 0, flaps: 0.5 }, engine: { rpm: 0 } }, game.t, { still: true, lightsOn: false });
   w.props.userData.lighthouse.userData.tick(game.t, true);
   w.props.userData.smoke.userData.tick(game.t, 0.3, 0.2);
+  w.life.userData.tick(game.t, 0.3, 0.2);
   w.water.userData.tick(game.t);
   rig.mode = 'orbit';
   rig.update(parked, dt, { t: game.t + 8, radius: 30 });

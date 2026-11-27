@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { buildTerrainMesh, buildCraterGlow } from '../terrain/terrainMesh.js';
 import { buildSky, buildClouds, buildWater } from './skyAndWater.js';
 import { buildIslandProps } from './islandProps.js';
+import { buildHarbourLife } from './harbourLife.js';
 import { buildSeaplane } from '../aircraft/seaplaneModel.js';
 import { makeMarkerLayer } from './missionMarkers.js';
 import { makeWeatherEffects } from './weatherEffects.js';
@@ -41,6 +42,8 @@ export function buildWorld(timeId, weatherId, seed = 1) {
   scene.add(buildClouds(time, weatherId, seed + 2));
   const props = buildIslandProps(time, seed);
   scene.add(props);
+  const life = buildHarbourLife(time);
+  scene.add(life);
 
   const hemi = new THREE.HemisphereLight(time.hemiSky, time.hemiGround, time.hemiIntensity);
   const sun = new THREE.DirectionalLight(time.sun, time.sunIntensity);
@@ -64,5 +67,5 @@ export function buildWorld(timeId, weatherId, seed = 1) {
   }
   const markers = makeMarkerLayer(scene, time.windows > 0.6);
   const effects = makeWeatherEffects(scene, weather, time);
-  return { scene, sky, water, props, plane, markers, effects, time, weather, sun };
+  return { scene, sky, water, props, life, plane, markers, effects, time, weather, sun };
 }
