@@ -1,9 +1,9 @@
-// The head-up display over the view: heading tape, big airspeed and altitude, vertical
-// speed, the mission card with objective n of m and the clock, a north-up map with the
-// next target, wind, fuel and damage chips, the radio line with who is speaking, and
-// an objectives checklist, a score line with the job's pay and best landing, and
-// big banners for stalls, drops and landings, a ring-cleared toast, and on a landing
-// approach the PAPI lights and a glideslope ladder.
+// The head-up display over the view: the Board's note card with the debt, heading tape,
+// big airspeed and altitude, the sortie card with its type and clock, a north-up map,
+// wind, fuel and damage chips, the radio line, an objectives checklist, score and combo,
+// a panel for the mission type (drop, sink, rings, load), the live-call strip, the
+// chapter plate, banners, key hints, the bingo box, and on a landing approach the PAPI
+// lights and a glideslope ladder.
 
 import { TOKENS, INK as PANEL, FACE, box, text, measure, stamp, WORDMARK } from '../identity/palette.js';
 import { MS_TO_KT, MS_TO_FPM } from '../flight/landingJudge.js';

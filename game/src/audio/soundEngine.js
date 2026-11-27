@@ -1,7 +1,7 @@
 // All sound is made in code with WebAudio: the radial engine's drone and its rough
 // running, rushing wind that rises with airspeed, the float hiss on the water, the stall
-// horn, a low-fuel chime, rain, the radio blip,
-// splashes and thumps on touchdown, the ring chime and the crash. Starts on first input.
+// horn, a low-fuel chime, rain, the radio blip, splashes and thumps on touchdown, the
+// ring chime and the crash. Starts on first input.
 
 export function makeSoundEngine() {
   let ctx = null;

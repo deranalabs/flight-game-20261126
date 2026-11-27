@@ -1,7 +1,8 @@
 // The Tern Mk II built from parts: tapered fuselage with cabin glass, radial cowling and
 // spinner, a turning three-blade prop, high wing on struts, twin floats on spreader bars,
 // tail with moving rudder and elevator, ailerons and flaps that follow the controls,
-// navigation lights, a strobe, a landing light, the TW-07 registration and the amber sun tail mark.
+// navigation lights, a strobe, a landing light, the TW-07 registration, and the Tidewing
+// livery: cream body, sulphur trim, a lagoon teal fin with a sulphur sun and rudder bands.
 
 import * as THREE from 'three';
 import { glowSprite } from '../render/glowSprite.js';

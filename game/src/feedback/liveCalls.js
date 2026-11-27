@@ -1,5 +1,6 @@
 // Live feedback strings that answer the flying: turn quality while banked, the ring
-// streak, approach callouts down final, the flare, and awards for holding a speed band.
+// streak, approach callouts down final, the flare, the drop-zone cue on a fire run, the
+// bingo fuel warning, and awards for holding a speed band.
 // trackCalls runs every fixed step inside the mission (so the headless bot earns the same
 // counts the feats read); callsFor builds the lines the HUD shows this frame.
 

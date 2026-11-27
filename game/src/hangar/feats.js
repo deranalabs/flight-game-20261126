@@ -1,6 +1,7 @@
 // Feats: medals for flying well, each with an icon and a counter kept in the career. A
 // feat is earned at the end of a sortie from what the sortie recorded (landings, rings,
-// drops, the live-call counters) and what the career stands at.
+// drops, the live-call counters) and what the career stands at. The board shows the medal
+// grid and FEATS n / total; the receipt shows the feats a sortie earned.
 
 const done = (x) => x.ms.status === 'done';
 const landings = (x) => x.ms.score.landings;

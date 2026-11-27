@@ -1,6 +1,7 @@
 // Mission 5, Tallow Ridge Fire: three fires on the slopes of Tallow Island. Skim Mirror
 // Lagoon to fill the borrowed 800 L belly tank, fly low over a fire and release. Fires
-// you leave alone grow back; smoke and heat over them are rough on the engine.
+// you leave alone grow back; smoke and heat over them are rough on the engine. A fire and
+// drop contract: the HUD shows the drop meter and the DROP ZONE cue on the run-in.
 
 export default {
   id: 'waterBomber',

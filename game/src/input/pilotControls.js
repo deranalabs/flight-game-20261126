@@ -1,6 +1,7 @@
 // Keyboard and mouse to stick, rudder, throttle, flaps and switches. Keys move the
 // surfaces at a steady rate and centre them when let go; the mouse wheel sets power,
 // the mouse yoke (M) flies from the pointer, and dragging looks around the cockpit.
+// A gamepad blends in through readPad; J and N answer the bingo box.
 
 import { clamp } from '../util/vec3.js';
 

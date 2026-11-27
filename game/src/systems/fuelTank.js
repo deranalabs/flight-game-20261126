@@ -1,5 +1,6 @@
 // Fuel: litres in the tanks, burn by throttle, time and range left at the present burn.
-// Fuel weighs 0.72 kg a litre and its weight changes the aircraft's mass.
+// Fuel weighs 0.72 kg a litre and its weight changes the aircraft's mass. The bingo box,
+// the BINGO FUEL call and the low-fuel chime all read litres against capacity.
 
 export const FUEL_KG_PER_L = 0.72;
 

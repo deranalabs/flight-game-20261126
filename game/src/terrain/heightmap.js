@@ -1,6 +1,7 @@
 // Ground height of the Cinder Reach: island bumps shaped by noise, then runways,
 // strips and village pads levelled into them and water lanes kept clear.
-// Pure functions: the renderer, the flight model and the tests all call groundHeight().
+// Pure functions: the renderer, the flight model, the harbour props (finds, windsocks)
+// and the tests all call groundHeight().
 
 import { ISLANDS, RUNWAYS, PADS } from './islandLayout.js';
 import { fbm } from '../util/noise.js';

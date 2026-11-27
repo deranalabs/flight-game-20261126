@@ -1,7 +1,8 @@
 // The Cinder Reach gazetteer: the island chain as one table that missions, radio, the
 // chart and the ledger read from. Naming rule: an island is a plain landscape word with a
 // local noun (Halyard Isle, Mount Cinder); a person is a given name and a trade surname
-// (Marta Quill, Teodor Brask). No real place or brand appears anywhere.
+// (Marta Quill, Teodor Brask). No real place or brand appears anywhere. Each island also
+// hides three finds (a wreck, a shrine, a lost mail drop) that pay a little of the note.
 
 export const REACH = 'Cinder Reach';
 
