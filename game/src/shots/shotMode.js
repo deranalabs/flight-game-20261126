@@ -118,7 +118,7 @@ export const SHOTS = {
     stepMission(ms, {}, { bot: true });
     ms.extra.bingo.at = ms.t - 3;
     ms.def = { ...ms.def, timeOfDay: 'day' };
-    return { ms, career: flyCareer(2).career, view: 'chase', camera: { distance: 22, height: 3, side: -8, lookAhead: 60, lookDown: -2, fov: 62 } };
+    return { ms, career: flyCareer(2).career, view: 'chase', camera: { distance: 22, height: 3, side: -3, lookAhead: 60, lookDown: -2, fov: 62 } };
   },
   damage() {
     const ms = startMission(missionById('waterBomber'), {}, 1);
