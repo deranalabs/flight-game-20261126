@@ -19,6 +19,9 @@ const BAND_HALF = 6;
 const BAND_HOLD = 12;
 /** Height (ft above the surface) where the approach call says MINIMUMS. */
 const MINIMUMS_FT = 300;
+/** Distance (m) to a fire, closing with water aboard, where the drop cue shows; and drop now. */
+const DROP_CUE_M = 450;
+const DROP_NOW_M = 120;
 
 /** The counters the feats read, kept on the mission. */
 export function newCallStats() {
@@ -79,8 +82,17 @@ export function callsFor(ms, ap) {
   if (ap) {
     const flaps = Math.round(ac.controls.flaps * 40);
     const parts = [`FLAPS ${flaps}`, `${ap.white} WHITE`, ap.word === 'ON' ? 'ON SLOPE' : `${ap.word} ${Math.abs(ap.dev).toFixed(1)}°`];
-    if (agl < MINIMUMS_FT) parts.push('MINIMUMS');
     out.push({ text: parts.join(' · '), tone: ap.word === 'ON' ? 'good' : 'warn' });
+    // the big call: MINIMUMS below the decision height, else how far to the aim point
+    if (agl < MINIMUMS_FT) out.unshift({ text: ap.word === 'ON' ? 'MINIMUMS · LAND' : 'MINIMUMS · GO AROUND?', tone: ap.word === 'ON' ? 'good' : 'warn', big: true });
+  }
+  const o = ms.objectives[ms.index];
+  if (o?.kind === 'fire' && (ac.waterKg ?? 0) > 20) {
+    const dx = o.fire.x - ac.pos.x;
+    const dz = o.fire.z - ac.pos.z;
+    const d = Math.hypot(dx, dz);
+    const closing = ac.vel.x * dx + ac.vel.z * dz > 0;
+    if (d < DROP_CUE_M && closing) out.unshift({ text: d < DROP_NOW_M ? 'DROP NOW' : `DROP ZONE ${Math.round(d / 10) * 10} M`, tone: d < DROP_NOW_M ? 'good' : 'warn', big: true });
   }
   if (agl < 40 && ac.vs < -0.5 && !ap && ms.objectives[ms.index]?.kind === 'land') {
     out.push({ text: `FLARE · SINK ${Math.round(-ac.vs * MS_TO_FPM / 10) * 10} FT/MIN`, tone: -ac.vs * MS_TO_FPM < 300 ? 'good' : 'warn' });

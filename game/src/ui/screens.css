@@ -121,13 +121,14 @@ td { padding: 3px 4px; font-weight: 700; border-bottom: 1px solid var(--rule); w
 .debt .dbar > div { height: 100%; background: var(--lagoon); }
 .debt .dt { font-size: 11px; color: var(--dim-ink); font-weight: 700; }
 
-.debrief { gap: 8px; padding: 16px 24px 16px 28px; width: min(1060px, 96%); }
+.debrief { gap: 8px; padding: 16px 24px 16px 28px; width: min(1060px, 96%); background: var(--panel-deep); }
 .debrief .dhead { display: flex; gap: 18px; align-items: center; }
 .debrief .grade { font-family: var(--face-display); font-size: 150px; line-height: 0.85; width: 110px; text-align: center; color: var(--lagoon); }
 .debrief .grade.g-C, .debrief .grade.g-D { color: var(--sulphur); } .debrief .grade.g-F { color: var(--ledger); }
 .debrief h1 { font-size: 40px; }
 .debrief .total { margin-left: auto; text-align: right; }
-.debrief .total b { font-family: var(--face-num); font-size: 64px; color: var(--lagoon); line-height: 1; }
+.debrief .total .kick b { font-family: var(--face-num); font-size: 40px; color: var(--lagoon); letter-spacing: 0; vertical-align: -6px; }
+.debrief .owed { font-size: 104px; }
 .debrief .dcols { display: grid; grid-template-columns: 1fr 460px; gap: 14px; align-items: start; }
 .debrief table.lines td { font-size: 14px; padding: 4px; white-space: normal; }
 .debrief td.pts { text-align: right; color: var(--sulphur); font-family: var(--face-num); font-size: 18px; }

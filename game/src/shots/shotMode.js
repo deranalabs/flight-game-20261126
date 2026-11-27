@@ -86,11 +86,12 @@ export const SHOTS = {
   fire() {
     const ms = startMission(missionById('waterBomber'), {}, 1);
     const fires = ms.objectives.filter((o) => o.kind === 'fire');
-    runUntil(ms, () => fires[1].doneAt !== undefined);
-    // a second on, the water still falling on the slope
-    runUntil(ms, (m) => m.t > fires[1].doneAt + 1.2);
-    return { ms, career: flyCareer(4).career, view: 'chase', camera: { distance: 24, height: 7, side: 7, lookAhead: 10, lookDown: -6, fov: 62 },
-      banner: { text: objectiveHeadline('fire', contractFor('waterBomber')), color: TOKENS.lagoon, sub: 'Sawmill Slope and Pine Shoulder are out · one fire left', big: true } };
+    // the run-in on the last fire, tank full, the drop cue up
+    runUntil(ms, (m) => {
+      const o = currentObjective(m);
+      return o === fires[2] && o.bot && o.bot.phase === 'pass' && m.ac.waterKg > 700 && distTo(m, o.fire.x, o.fire.z) < 330;
+    });
+    return { ms, career: flyCareer(4).career, view: 'chase', camera: { distance: 26, height: 9, side: -5, lookAhead: 60, lookDown: -14, fov: 62 } };
   },
   final() {
     const ms = startMission(missionById('medevac'), {}, 1);

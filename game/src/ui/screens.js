@@ -209,18 +209,18 @@ export function showDebrief(def, result, fuelBill, h, x) {
       <div><div class="kick">RECEIPT · SORTIE ${def.order} OF ${MISSIONS.length} · ${esc(MISSION_TYPES[x.contract?.type ?? 'haul'])}</div>
       <h1>${esc(end ? end.title : def.title)}</h1>
       <div class="contract">“${esc(end ? end.text : result.done ? x.contract?.after ?? '' : result.reason ?? 'The job is not done.')}”</div></div>
-      <div class="total"><div class="kick">PAID TO THE BOARD</div><b>+${sh(x.debtPaid)}</b>
-        <div class="owed small">${sh(left)}<span> SH OWED</span></div>${extra ? `<div class="quiet">${esc(extra)}</div>` : ''}</div>
+      <div class="total"><div class="kick">PAID TO THE BOARD <b>+${sh(x.debtPaid)}</b></div>
+        <div class="owed">${sh(left)}<span> SH OWED</span></div>${extra ? `<div class="quiet">${esc(extra)}</div>` : ''}</div>
       ${stampTag(word, 132)}</div>
     <div class="dcols"><div><table class="lines">${lines}<tr class="sum"><td>Base ${s.base} × combo ${s.mult}${s.mult > 1 ? ` · run of ${s.run}` : ''}</td><td class="pts">${s.total}</td></tr></table>
       <div class="tip">▶ ${esc(improveTip(s))}</div>
       <div class="medals row-medals">${feats}</div></div>
-      <div class="chartbox"><canvas width="460" height="232"></canvas></div></div>
+      <div class="chartbox"><canvas class="chart" width="460" height="232"></canvas></div></div>
     ${cards ? `<div class="kick">REFIT · PICK ONE CARD, CHARGED TO THE NOTE</div><div class="cards">${cards}</div>` : ''}
     <div class="meta"><span class="chip">Time <b>${fmtTime(result.time)}</b></span><span class="chip">Cash pay <b>${result.pay} sh</b></span>
       <span class="chip">Fuel bill <b>${fuelBill} sh</b></span>${debtBar(x.career)}</div>
     <div class="row"><button class="ghost" id="retry">Fly it again</button><button id="hangar">Back to the board (Enter)</button></div></div>`);
-  drawTraceChart(el.querySelector('canvas'), x.trace);
+  drawTraceChart(el.querySelector('canvas.chart'), x.trace);
   el.querySelectorAll('[data-refit]').forEach((b) => {
     b.onclick = () => { h.onRefit?.(b.dataset.refit); el.querySelectorAll('[data-refit]').forEach((c) => { c.disabled = true; }); b.classList.remove('ghost'); };
   });

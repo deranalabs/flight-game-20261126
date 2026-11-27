@@ -448,13 +448,15 @@ function banner(ctx, W, H, s, color, sub, size = 56) {
 
 // Live calls under the heading box: turn quality, the streak, approach callouts, awards.
 function callStrip(ctx, W, calls) {
-  const list = calls.slice(0, 2);
-  list.forEach((c, k) => {
-    const w = measure(ctx, c.text, 26, 'display') + 40;
-    const y = 112 + k * 46;
-    box(ctx, W / 2 - w / 2, y, w, 40, { fill: DARK, tab: c.tone === 'good' ? CYAN : AMBER });
-    text(ctx, c.text, W / 2, y + 21, 26, c.tone === 'good' ? CYAN : c.tone === 'warn' ? AMBER : INK, 'center', 'display');
-  });
+  let y = 112;
+  for (const c of calls.slice(0, 2)) {
+    const size = c.big ? 84 : 26;
+    const w = measure(ctx, c.text, size, 'display') + 40;
+    const h = size * 1.25 + 8;
+    box(ctx, W / 2 - w / 2, y, w, h, { fill: DARK, tab: c.tone === 'good' ? CYAN : AMBER });
+    text(ctx, c.text, W / 2, y + h / 2 + 1, size, c.tone === 'good' ? CYAN : c.tone === 'warn' ? AMBER : INK, 'center', 'display');
+    y += h + 6;
+  }
 }
 
 // The mission type's own panel, left of the right column: a drop meter for fire and drop
@@ -556,7 +558,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
     approachLadder(ctx, side - 92 - 8, ms, 236, info.panelTop - 24);
   }
   if (info.toast) toast(ctx, W, info.toast);
-  else if (info.calls?.length) callStrip(ctx, W, info.calls);
+  else if (info.calls?.length && !info.banner && !info.plate) callStrip(ctx, W, info.calls);
   // in the cockpit the left column runs down to the glare shield, so the radio sits up top
   checklist(ctx, ms, 14, ry + 106, info.view === 'cockpit' ? info.panelTop - 10 : info.panelTop - (info.radio ? 144 : 24));
   if (info.view === 'cockpit') radioBox(ctx, W, info.radio, 236, W / 2 - 195);

@@ -282,6 +282,7 @@ function renderFlight(ms, dt, opts = {}) {
   const W = window.innerWidth;
   const H = window.innerHeight;
   hud.clearRect(0, 0, W, H);
+  if (opts.noHud) return; // the debrief receipt stands alone over the frozen scene
   const panel = drawInstrumentPanel(hud, W, H, ac, game.view, { autopilot: !!game.autopilot, bug: objectiveBearing(ms) });
   const banner = opts.banner ?? (game.banner && clock < game.banner.until ? game.banner : null);
   drawFlightHud(hud, W, H, ms, {
@@ -333,7 +334,7 @@ function frame(now) {
   } else if (game.mode === 'shot') {
     renderShot(dt);
   } else if (game.world) {
-    if (game.ms && game.mode === 'debrief') renderFlight(game.ms, dt);
+    if (game.ms && game.mode === 'debrief') renderFlight(game.ms, dt, { noHud: true });
     else renderHangarScene(dt);
   }
   requestAnimationFrame(frame);
@@ -345,7 +346,7 @@ function renderShot(dt) {
   const s = game.shot;
   if (s.view === 'hangar') { renderHangarScene(0); return; }
   if (s.view === 'debrief') {
-    renderFlight(s.ms, 0, { t: 0.6, camera: { snap: true } });
+    renderFlight(s.ms, 0, { t: 0.6, camera: { snap: true }, noHud: true });
     s.frames = (s.frames ?? 0) + 1;
     if (s.frames === 3) { document.title = `${document.title} [shot ready]`; window.__shotReady = true; }
     return;
