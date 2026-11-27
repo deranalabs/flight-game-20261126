@@ -8,12 +8,13 @@ import { makeAutopilot } from '../flight/autopilot.js';
 import { buildSpec } from '../aircraft/ternSpec.js';
 import { makeRadio } from '../characters/radioCast.js';
 import { gradeLanding } from '../flight/landingJudge.js';
-import { condition, PARTS } from '../systems/damageModel.js';
+import { condition, PARTS, noSeaLanding } from '../systems/damageModel.js';
 import { groundHeight } from '../terrain/heightmap.js';
 import { KIT } from './missionKit.js';
 import { traceSample } from '../hangar/sortieScore.js';
 import { trackCalls, newCallStats } from '../feedback/liveCalls.js';
 import { currentApproach } from '../flight/glidepath.js';
+import { stepBingo, stepRepair } from './pilotCalls.js';
 
 /**
  * Begin a mission. career: { upgrades: [], damage: {...} } carries the hangar state in;
@@ -113,6 +114,8 @@ export function stepMission(ms, actions = {}, opts = {}) {
     if (e.type === 'crash') {
       ms.say('crash');
       ms.fail(e.reason);
+    } else if (e.type === 'landed' && e.landing?.surface === 'water' && noSeaLanding(ac.damage)) {
+      ms.fail('The holed float filled on the water and she nosed over');
     } else if (e.type === 'bounce') ms.say('bounce');
     else if (e.type === 'stall') ms.say('stall');
   }
@@ -133,6 +136,8 @@ export function stepMission(ms, actions = {}, opts = {}) {
     }
   }
   warnings(ms);
+  if (ms.status === 'flying') stepBingo(ms, actions, { bot: opts.bot, noWater: noSeaLanding(ac.damage) });
+  if (ms.status === 'flying') stepRepair(ms, ms.extra.bingo?.open ? {} : actions, { bot: opts.bot });
   stepLoads(ms, dt);
   ms.radio.update(ms.t);
   if (ms.def.timeLimit && ms.t > ms.def.timeLimit && ms.status === 'flying') ms.fail(ms.def.timeLimitText ?? 'Out of time');
@@ -215,7 +220,7 @@ export function missionResult(ms) {
   const notes = [];
   if (done) {
     stars = 1;
-    const fast = ms.t <= def.parTime;
+    const fast = sortieTime(ms) <= def.parTime;
     const neat = avgLanding >= 75 && dmgTaken < 8 && ms.score.misses <= (def.missAllowance ?? 1);
     if (fast || neat) stars = 2;
     if (fast && neat) stars = 3;
@@ -232,12 +237,15 @@ export function missionResult(ms) {
   }
   const bestLanding = landings.reduce((b, l) => (!b || l.points > b.points ? l : b), null);
   return {
-    id: def.id, title: def.title, done, stars, pay: Math.max(0, pay), time: ms.t,
+    id: def.id, title: def.title, done, stars, pay: Math.max(0, pay), time: sortieTime(ms),
     landing: bestLanding ? bestLanding.letter : '-', landings, notes,
     damageTaken: Math.round(dmgTaken), fuelUsed: Math.round(fuelUsed),
     crashed: !!ac.crashed, reason: ms.failReason,
   };
 }
+
+/** Sortie clock as the receipt books it: flight time plus minutes a divert added. */
+export const sortieTime = (ms) => ms.t + (ms.extra.timeAdd ?? 0);
 
 export function fmtTime(s) {
   const m = Math.floor(s / 60);

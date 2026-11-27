@@ -264,7 +264,7 @@ function windBlock(ctx, W, ms, y) {
   return y + 70;
 }
 
-function chips(ctx, W, ms, y) {
+function chips(ctx, W, ms, y, lines) {
   const ac = ms.ac;
   const x = W - 222;
   const fuelPct = Math.round((ac.fuel.litres / ac.fuel.capacity) * 100);
@@ -274,10 +274,20 @@ function chips(ctx, W, ms, y) {
     [`FUEL ${fuelPct}%`, Number.isFinite(mins) ? `${Math.round(mins)} MIN` : 'ENG OFF', fuelPct < 15 ? BAD : fuelPct < 30 ? AMBER : GOOD],
     [`DAMAGE ${Math.round(100 - cond.average)}%`, cond.worstHealth < 100 ? `${cond.worst.toUpperCase()} ${Math.round(cond.worstHealth)}%` : 'ALL GREEN', cond.worstHealth < 45 ? BAD : cond.worstHealth < 80 ? AMBER : GOOD],
   ];
+  // each hurt part by name, with what it does to the flying
+  for (const l of (lines ?? []).slice(0, 3)) {
+    const [part, effect] = l.text.split(' · ');
+    rows.push([part, effect, AMBER, true]);
+  }
   const extra = ms.def.hud ? ms.def.hud(ms) : null;
   if (extra) rows.push([extra[0], '', { good: GOOD, warn: AMBER, bad: BAD, dim: MUTED }[extra[1]] ?? INK]);
-  rows.forEach(([a, b, col], i) => {
-    box(ctx, x, y + i * 40, 206, 34, { fill: BG });
+  rows.forEach(([a, b, col, named], i) => {
+    box(ctx, x, y + i * 40, 206, 34, { fill: BG, tab: named ? AMBER : undefined });
+    if (named) {
+      text(ctx, a, x + 12, y + i * 40 + 11, 13, col);
+      text(ctx, clip(ctx, b, 186, 12), x + 12, y + i * 40 + 26, 12, INK);
+      return;
+    }
     text(ctx, a, x + 12, y + i * 40 + 17, 17, col);
     if (b) text(ctx, b, x + 194, y + i * 40 + 17, 14, DIM, 'right');
   });
@@ -549,7 +559,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   bigReadout(ctx, 208, ry, 'ALT', ft.toLocaleString('en-US'), 'FT', `AGL ${agl.toLocaleString('en-US')} · VS ${fpm > 0 ? '+' : ''}${fpm}`, agl < 150 && !ac.onSurface ? AMBER : INK);
   let y = miniMap(ctx, W, ms, 12);
   y = windBlock(ctx, W, ms, y + 4);
-  y = chips(ctx, W, ms, y);
+  y = chips(ctx, W, ms, y, info.damage);
   if (y + 96 < info.panelTop - 24) { scoreLine(ctx, W, ms, y + 6, info.live, info.nextMult); y += 92; }
   else scoreFlanks(ctx, W, info.live, info.nextMult);
   ringTag(ctx, ms, info);
@@ -559,7 +569,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
     approachLadder(ctx, side - 92 - 8, ms, 236, info.panelTop - 24);
   }
   if (info.toast) toast(ctx, W, info.toast);
-  else if (info.calls?.length && !info.banner && !info.plate) callStrip(ctx, W, info.calls);
+  else if (info.calls?.length && !info.banner && !info.plate && !info.bingo && !info.repair) callStrip(ctx, W, info.calls);
   // in the cockpit the left column runs down to the glare shield, so the radio sits up top
   checklist(ctx, ms, 14, ry + 106, info.view === 'cockpit' ? info.panelTop - 10 : info.panelTop - (info.radio ? 144 : 24));
   if (info.view === 'cockpit') radioBox(ctx, W, info.radio, 236, W / 2 - 195);
@@ -571,23 +581,59 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   else if (ac.onSurface && ac.ias > (info.rotateSpeed ?? 27) && ac.controls.throttle > 0.5) banner(ctx, W, H, 'ROTATE', CYAN, 'Hold S or Down to lift the nose');
   else if (!ac.onSurface && ac.agl < 12 && ac.vs < -1.2 && ac.ias < 40) banner(ctx, W, H, 'FLARE', CYAN, 'Ease back and close the throttle');
   if (info.hints) keyHints(ctx, W, info.panelTop, info.hints);
-  if (info.bingo) bingoBox(ctx, W, info.panelTop, info.bingo);
+  if (info.bingo) bingoBox(ctx, W, info.bingo);
+  else if (info.repair) repairBox(ctx, W, info.repair, info.damage);
   const help = `${info.view.toUpperCase()} VIEW · C camera · F flaps · Space drop · Esc pause`;
   text(ctx, help, W - 16, info.panelTop - 12, 13, PANEL.dim, 'right');
   scopeStrip(ctx, W, info.scope, info.panelTop - 46, 412, W - 16 - measure(ctx, help, 13) - 14);
 }
 
-// The bingo decision, each option priced against the note; waiting it out presses on.
-function bingoBox(ctx, W, bottom, b) {
-  const w = 520;
+// The bingo decision, sized to read from across the room: the headline, then each option
+// with its price in numbers. The countdown commits.
+function bingoBox(ctx, W, b) {
+  const w = 660;
   const x = W / 2 - w / 2;
-  const y = bottom - 250;
-  box(ctx, x, y, w, 150, { fill: PANEL.panelDeep, tab: AMBER, cut: 16 });
-  text(ctx, 'BINGO FUEL', x + 22, y + 30, 40, AMBER, 'left', 'display');
-  text(ctx, `PRESS ON IN ${b.left}`, x + w - 20, y + 30, 18, INK, 'right', 'numeral');
-  text(ctx, `J  JETTISON THE LOAD  ·  ${b.cost} SH ON THE NOTE`, x + 22, y + 72, 18, INK);
-  text(ctx, 'N  DIVERT  ·  LOSE THE CONTRACT, KEEP THE TERN', x + 22, y + 100, 18, INK);
-  text(ctx, '…  PRESS ON  ·  LAND BEFORE THE TANK RUNS DRY', x + 22, y + 128, 18, MUTED);
+  const y = 112;
+  box(ctx, x, y, w, 334, { fill: DARK, tab: AMBER, cut: 20 });
+  text(ctx, 'DECISION REQUIRED', x + 26, y + 30, 26, AMBER, 'left', 'display');
+  text(ctx, `${b.left}`, x + w - 26, y + 70, 64, AMBER, 'right', 'numeral');
+  text(ctx, `BINGO FUEL ${b.fuelPct}%`, x + 24, y + 94, 92, INK, 'left', 'display');
+  const opt = (yy, key, head, cost, col) => {
+    box(ctx, x + 22, yy - 30, 58, 58, { fill: col, cut: 8 });
+    text(ctx, key, x + 51, yy, 46, DARK, 'center', 'display');
+    text(ctx, head, x + 96, yy - 6, 54, INK, 'left', 'display');
+    text(ctx, cost, x + 98, yy + 32, 26, DIM);
+  };
+  opt(y + 178, '1', `COMMIT FINAL RWY ${b.commit.rwy}`, `full pay · reserve ${b.commit.reserveMin} min · flameout −${b.commit.flameoutSh} sh`, AMBER);
+  opt(y + 278, '2', `DIVERT ${b.divert.to.toUpperCase()}`, `+${b.divert.min} min · −${b.divert.sh} sh · safe`, CYAN);
+}
+
+// YOUR CALL on damage: each hurt part with its effect, then repair at the next stop or press on.
+function repairBox(ctx, W, r, lines = []) {
+  const w = 660;
+  const x = W / 2 - w / 2;
+  const y = 112;
+  const shown = lines.slice(0, 2);
+  const h = 150 + shown.length * 50 + 96;
+  box(ctx, x, y, w, h, { fill: DARK, tab: AMBER, cut: 20 });
+  text(ctx, 'YOUR CALL', x + 26, y + 30, 26, AMBER, 'left', 'display');
+  text(ctx, `${r.left}`, x + w - 26, y + 70, 64, AMBER, 'right', 'numeral');
+  text(ctx, 'SHE IS FLYING HURT', x + 24, y + 92, 72, INK, 'left', 'display');
+  shown.forEach((l, i) => {
+    const [part, effect] = l.text.split(' · ');
+    const yy = y + 150 + i * 50;
+    text(ctx, part, x + 26, yy, 40, AMBER, 'left', 'display');
+    text(ctx, clip(ctx, effect, w - 60 - measure(ctx, part, 40, 'display'), 30), x + 40 + measure(ctx, part, 40, 'display'), yy + 2, 30, INK);
+  });
+  const yy = y + h - 52;
+  const half = (w - 44 - 16) / 2;
+  const choice = (cx, key, head, cost, col) => {
+    box(ctx, cx, yy - 30, half, 74, { fill: PANEL.panel, tab: col, cut: 10 });
+    text(ctx, `${key} ${head}`, cx + 16, yy, 40, col, 'left', 'display');
+    text(ctx, cost, cx + 18, yy + 30, 24, DIM);
+  };
+  choice(x + 22, '1', 'REPAIR', `−${r.sh} sh · +${r.min} min, next stop`, CYAN);
+  choice(x + 22 + half + 16, '2', 'PRESS ON', 'fly her hurt, 0 sh', AMBER);
 }
 
 // The first minute of a sortie: the keys, so the pilot learns by flying.

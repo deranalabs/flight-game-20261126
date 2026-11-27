@@ -216,10 +216,11 @@ export function land(rwId, opts = {}) {
   const rw = RUNWAYS[rwId];
   return {
     kind: 'land', rw, opts, landing: null,
-    label() { return `Land at ${rw.name}${opts.maxFpm ? ` (softer than ${opts.maxFpm} ft/min)` : ''}`; },
-    marker() { return { type: 'runway', rw }; },
+    label() { return `Land at ${this.rw.name}${opts.maxFpm ? ` (softer than ${opts.maxFpm} ft/min)` : ''}`; },
+    marker() { return { type: 'runway', rw: this.rw }; },
     update(ctx) {
       const { ac, ms } = ctx;
+      const rw = this.rw; // a bingo divert can re-target the landing
       const L = ac.lastLanding;
       if (!L || L.used) return false;
       if (L.runway !== rw) {
@@ -237,7 +238,7 @@ export function land(rwId, opts = {}) {
       }
       return true;
     },
-    fly(ctx) { botApproach(this, ctx, rw, opts.bot ?? {}); },
+    fly(ctx) { botApproach(this, ctx, this.rw, opts.bot ?? {}); },
   };
 }
 
@@ -247,11 +248,12 @@ export function landAny(rwIds, label, opts = {}) {
   return {
     kind: 'land', rw: fields[0], fields, opts, landing: null,
     label: () => label,
-    marker: () => ({ type: 'runways', fields }),
+    marker() { return { type: 'runways', fields: this.fields }; },
     update(ctx) {
       const { ac, ms } = ctx;
       const L = ac.lastLanding;
       if (!L || L.used) return false;
+      const fields = this.fields; // a bingo divert can narrow these to one
       let rw = fields.find((f) => f === L.runway);
       if (!rw && L.surface === 'water') {
         rw = fields.find((f) => {
@@ -268,7 +270,7 @@ export function landAny(rwIds, label, opts = {}) {
       return true;
     },
     fly(ctx) {
-      this.pick = this.pick ?? nearestField(fields, ctx.ac);
+      this.pick = this.pick ?? nearestField(this.fields, ctx.ac);
       botApproach(this, ctx, this.pick, opts.bot ?? {});
     },
   };

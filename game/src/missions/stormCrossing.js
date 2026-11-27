@@ -20,6 +20,7 @@ export default {
   seed: 71,
   start: (k) => k.lineUp('halyard', 180),
   fuel: 0.16,
+  bingo: false, // the fuel call here is its own: the Saltmoor barge or press on
   pay: 1300,
   parTime: 600,
   build(ms, k) {

@@ -256,7 +256,7 @@ export function showDebrief(def, result, fuelBill, h, x) {
   const end = x.last && result.done ? standing(x.career) : null;
   const word = end ? end.word.split('-')[0] : left ? 'DUE' : 'PAID';
   const st = x.settled ?? { paid: x.debtPaid, bonus: 0, choice: 0, fee: 0 };
-  const extra = [st.bonus ? `event +${st.bonus}` : '', st.choice ? `choice +${st.choice}` : '', st.fee ? `Board fee −${sh(st.fee)}` : ''].filter(Boolean).join(' · ');
+  const extra = [st.bonus ? `event +${st.bonus}` : '', st.choice ? `choice +${st.choice}` : '', st.fee ? `Board fee −${sh(st.fee)}` : '', ...(st.charges ?? []).map((ch) => ch.label)].filter(Boolean).join(' · ');
   const feats = (x.feats ?? []).map((f) => `<span class="medal won"><b>${esc(f.icon)}</b><span>${esc(f.name)}</span></span>`).join('') || '<span class="quiet">No feats this time.</span>';
   const cards = (x.refits ?? []).map((r) => `<button class="refit ghost" data-refit="${r.id}"><i>${esc(r.part)}</i><b>${esc(r.name)}</b><span>${esc(r.blurb)}</span><em>+${sh(r.cost)} sh on the note</em></button>`).join('');
   const el = mount(`<div class="brief panel debrief">

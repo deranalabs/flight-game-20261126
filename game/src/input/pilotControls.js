@@ -1,7 +1,8 @@
 // Keyboard and mouse to stick, rudder, throttle, flaps and switches. Keys move the
 // surfaces at a steady rate and centre them when let go; the mouse wheel sets power,
 // the mouse yoke (M) flies from the pointer, and dragging looks around the cockpit.
-// A gamepad blends in through readPad; J and N answer the bingo box.
+// A gamepad blends in through readPad. While a decision box is open (st.callOpen, set by
+// the game), 1 and 2 answer it instead of setting the throttle.
 
 import { clamp } from '../util/vec3.js';
 
@@ -20,7 +21,7 @@ export const KEY_HELP = [
   ['Z', 'Autopilot: hold heading and height'],
   ['R', 'Restart a stopped engine'],
   ['L', 'Landing light'],
-  ['J / N', 'At bingo fuel: jettison the load / divert'],
+  ['1 / 2 in a box', 'Bingo fuel: commit / divert · damage: repair / press on'],
   ['[ / ]', 'Pitch trim'],
   ['Esc / P', 'Pause'],
 ];
@@ -75,7 +76,8 @@ export function makePilotControls(target = window) {
     const pad = readPad(st, dt);
     if (any('ShiftLeft', 'ShiftRight', 'Equal', 'NumpadAdd')) st.throttle = clamp(st.throttle + 0.45 * dt, 0, 1);
     if (any('ControlLeft', 'ControlRight', 'Minus', 'NumpadSubtract')) st.throttle = clamp(st.throttle - 0.45 * dt, 0, 1);
-    for (let n = 0; n <= 9; n++) if (pressed.has(`Digit${n}`)) st.throttle = n === 0 ? 1 : n / 10;
+    const call = st.callOpen ? (pressed.has('Digit1') ? 1 : pressed.has('Digit2') ? 2 : 0) : 0;
+    if (!st.callOpen) for (let n = 0; n <= 9; n++) if (pressed.has(`Digit${n}`)) st.throttle = n === 0 ? 1 : n / 10;
     if (pressed.has('KeyF')) st.flaps = st.flaps < 0.25 ? 0.5 : 1;
     if (pressed.has('KeyV')) st.flaps = st.flaps > 0.75 ? 0.5 : 0;
     if (any('BracketLeft')) st.trim = clamp(st.trim - 0.4 * dt, -1, 1);
@@ -88,8 +90,7 @@ export function makePilotControls(target = window) {
       restart: pressed.has('KeyR'),
       autopilot: pressed.has('KeyZ'),
       light: pressed.has('KeyL'),
-      jettison: pressed.has('KeyJ'),
-      divert: pressed.has('KeyN'),
+      call,
       pause: pressed.has('Escape') || pressed.has('KeyP') || pad.pause,
       any: pressed.size > 0,
       help: pressed.has('KeyH'),

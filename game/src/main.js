@@ -13,6 +13,8 @@ import { awardFeats } from './hangar/feats.js';
 import { refitOffer, fitRefit } from './hangar/refits.js';
 import { callsFor } from './feedback/liveCalls.js';
 import { scopeLine } from './story/counts.js';
+import { REPAIR, bingoLeft } from './missions/pilotCalls.js';
+import { damageLines } from './systems/damageModel.js';
 import { MISSIONS, missionById } from './missions/index.js';
 import { STEP } from './flight/flightModel.js';
 import { animateSeaplane } from './aircraft/seaplaneModel.js';
@@ -45,8 +47,6 @@ const FINDS = findSpots(ISLANDS);
 /** A find counts when the Tern passes within this many metres, below FIND_AGL metres. */
 const FIND_RANGE = 140;
 const FIND_AGL = 160;
-/** Bingo: under this fuel share the decision box opens for this many seconds; cargo lost costs per kg. */
-const BINGO = { frac: 0.15, seconds: 10, perKg: 1.5 };
 /** Easy assist: rudder follows the slip, and the stick eases off near the stall. */
 const EASY_COORD = 3;
 const EASY_STALL_EASE = 0.4;
@@ -169,7 +169,7 @@ function endFlight() {
   const { fuelBill } = recordFlight(game.career, result, ms.ac, ms.def.client);
   recordScore(game.career, ms.def.id, scored);
   (game.career.tracks ??= {})[ms.def.id] = ms.track;
-  const settled = settleSortie(game.career, ms.def, scored, MISSIONS.length);
+  const settled = settleSortie(game.career, ms.def, scored, MISSIONS.length, ms.extra);
   const feats = awardFeats(game.career, { ms, scored, result, debtLeft: debtLeft(game.career) });
   for (const [id, c] of Object.entries(ms.radio.cast)) game.castStates[id] = c.state;
   saveCareer(game.career);
@@ -181,30 +181,6 @@ function endFlight() {
     onRefit: (id) => { if (fitRefit(game.career, id)) saveCareer(game.career); },
   }, { scored, debtPaid: settled.total, settled, trace: ms.trace, career: game.career, feats, refits: result.done ? refitOffer(game.career) : [], contract: contractFor(ms.def.id), last: ms.def.order === MISSIONS.length });
   statusLine.textContent = `${ms.def.title}: ${result.done ? `${result.stars} stars` : 'failed'}`;
-}
-
-/**
- * The bingo decision: the first time fuel drops under the bingo share, a box offers to
- * jettison the load (lighter, but the Board charges the lost cargo), to divert (the
- * contract is lost, the Tern is safe) or, by waiting it out, to press on.
- */
-function bingoDecision(ms, actions) {
-  const ac = ms.ac;
-  const frac = ac.fuel.litres / ac.fuel.capacity;
-  if (!ms.extra.bingo && frac < BINGO.frac && !ac.onSurface) ms.extra.bingo = { at: ms.t, open: true };
-  const b = ms.extra.bingo;
-  if (!b || !b.open) return;
-  if (ms.t > b.at + BINGO.seconds) { b.open = false; b.choice = 'press'; return; }
-  if (actions.jettison) {
-    b.open = false; b.choice = 'jettison';
-    const cost = Math.round(BINGO.perKg * (ac.payloadKg + ac.waterKg));
-    ac.payloadKg = 0; ac.waterKg = 0;
-    if (cost) chargeDebt(game.career, cost, `${ms.def.title}: load jettisoned`);
-    game.banner = { text: 'LOAD JETTISONED', color: TOKENS.sulphur, sub: `${cost} sh charged to the note · lighter, longer glide`, until: ms.t + 3 };
-  } else if (actions.divert) {
-    b.open = false; b.choice = 'divert';
-    ms.fail('Diverted at bingo fuel: the contract goes to another pilot');
-  }
 }
 
 /** Hidden finds: a low pass over one books it, pays a little of the note and logs it. */
@@ -237,6 +213,7 @@ function pause() {
 function flyFrame(dt) {
   const ms = game.ms;
   const ac = ms.ac;
+  input.callOpen = !!(ms.extra.bingo?.open || ms.extra.repair?.open);
   const actions = input.update(dt);
   if (actions.pause) { pause(); return; }
   if (actions.camera) game.view = VIEWS[(VIEWS.indexOf(game.view) + 1) % VIEWS.length];
@@ -263,7 +240,7 @@ function flyFrame(dt) {
   while (game.acc >= STEP) {
     game.acc -= STEP;
     if (game.autopilot) flyHeading(ac, game.autopilot.ap, game.autopilot.hdg, game.autopilot.alt, game.autopilot.speed, STEP);
-    stepMission(ms, first ? { drop: actions.drop } : {});
+    stepMission(ms, first ? { drop: actions.drop, call: actions.call } : {});
     first = false;
     for (const e of ac.events) {
       if (e.type === 'touchdown') sound.event(e.kind === 'water' ? 'splash' : 'touchdown');
@@ -276,7 +253,6 @@ function flyFrame(dt) {
     if (ms.status !== 'flying') break;
   }
   if (actions.drop) sound.event('drop');
-  bingoDecision(ms, actions);
   spotFinds(ms);
   if (ms.index > before) {
     const done = ms.objectives[ms.index - 1];
@@ -347,7 +323,9 @@ function renderFlight(ms, dt, opts = {}) { // opts is reassigned below for the c
     calls: callsFor(ms, currentApproach(ms)), scope: SCOPE,
     plate: opts.plate ?? (game.plate && clock < game.plate.until ? game.plate : null),
     hints: !opts.t && game.assist !== 'expert' && clock < HINT_SECONDS && clock > PLATE_SECONDS ? HINTS : null,
-    bingo: ms.extra.bingo?.open ? { left: Math.max(0, Math.ceil(ms.extra.bingo.at + BINGO.seconds - clock)), cost: Math.round(BINGO.perKg * (ac.payloadKg + ac.waterKg)) } : null,
+    bingo: ms.extra.bingo?.open ? { ...ms.extra.bingo, left: bingoLeft(ms), fuelPct: Math.round((ac.fuel.litres / ac.fuel.capacity) * 100) } : null,
+    damage: damageLines(ac.damage),
+    repair: ms.extra.repair?.open ? { ...ms.extra.repair, left: Math.max(0, Math.ceil(ms.extra.repair.at + REPAIR.seconds - ms.t)) } : null,
     panelTop: panel.top, banner, radio: ms.radio.current,
     toast: game.toast && clock < game.toast.until ? game.toast.text : null,
     rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,

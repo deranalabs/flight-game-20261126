@@ -45,7 +45,7 @@ export function squeezeSortie(n) {
  * the squeeze choice (the pilot's, or the fallback), then the Board's fee once the next
  * sortie opens chapter 3. n is the number of sorties on the board. Returns what moved.
  */
-export function settleSortie(c, def, scored, n) {
+export function settleSortie(c, def, scored, n, extra = {}) {
   const paid = payDebt(c, scored, `${def.title}: ${scored.grade} grade`);
   let bonus = 0;
   let choice = 0;
@@ -66,7 +66,9 @@ export function settleSortie(c, def, scored, n) {
     c.feeCharged = true;
     fee = chargeDebt(c, SQUEEZE_FEE, 'Board fee raised');
   }
-  return { paid, bonus, choice, fee, total: paid + bonus + choice };
+  // the sortie's own decisions (a bingo divert, a flameout, a field repair), as priced
+  const charges = (extra.charges ?? []).map((ch) => ({ ...ch, sh: chargeDebt(c, ch.sh, `${def.title}: ${ch.label}`) }));
+  return { paid, bonus, choice, fee, charges, total: paid + bonus + choice };
 }
 
 /** The chapter of the next sortie to fly. */

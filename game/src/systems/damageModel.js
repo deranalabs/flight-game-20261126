@@ -1,5 +1,6 @@
 // Damage to the Tern in four parts (engine, airframe, floats, controls), each 0..100 health,
-// what hurts them, and how hurt parts change the way she flies.
+// what hurts them, how hurt parts change the way she flies, and the plain line the HUD
+// shows for each hurt part, its number taken from the same effects the flight model reads.
 
 export const PARTS = ['engine', 'airframe', 'floats', 'controls'];
 export const PART_NAMES = { engine: 'Engine', airframe: 'Airframe', floats: 'Floats', controls: 'Controls' };
@@ -59,4 +60,26 @@ export function condition(dmg) {
 export function repairCost(dmg) {
   const rate = { engine: 9, airframe: 7, floats: 5, controls: 6 };
   return Math.round(PARTS.reduce((s, p) => s + (100 - dmg[p]) * rate[p], 0));
+}
+
+/** Below this float health a water touchdown fills the holed float: no sea landing. */
+export const FLOAT_SEA_MIN = 50;
+export const noSeaLanding = (dmg) => dmg.floats < FLOAT_SEA_MIN;
+
+const CLEAN_CL_MAX = 1.62;
+
+/**
+ * One line per hurt part, worst first: the part, its health and what it does in numbers.
+ * Every number comes from damageEffects, which the flight model applies each step.
+ */
+export function damageLines(dmg, clMax = CLEAN_CL_MAX) {
+  const fx = damageEffects(dmg);
+  const pct = (v) => Math.round(v * 100);
+  const hp = (p) => Math.round(dmg[p]);
+  const out = [];
+  if (dmg.engine < 100) out.push({ part: 'engine', text: `ENGINE ${hp('engine')}% · thrust −${pct(1 - fx.thrustMul)}%${fx.rough > 0 ? ', running rough' : ''}` });
+  if (dmg.airframe < 100) out.push({ part: 'airframe', text: `L WING ${hp('airframe')}% · stall +${pct(Math.sqrt(clMax / (clMax - fx.clMaxLoss)) - 1)}%, rolls left` });
+  if (dmg.controls < 100) out.push({ part: 'controls', text: `AILERONS ${hp('controls')}% · roll rate −${pct(1 - fx.ctrlEff)}%, rolls left` });
+  if (dmg.floats < 100) out.push({ part: 'floats', text: `R FLOAT ${hp('floats')}% · pulls right on water, ${noSeaLanding(dmg) ? 'no sea landing' : `water drag +${pct(fx.waterDragMul - 1)}%`}` });
+  return out.sort((a, b) => dmg[a.part] - dmg[b.part]);
 }

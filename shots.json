@@ -1,6 +1,6 @@
 [
   { "name": "1-dusk-ring-trial-cover.jpg", "query": "?shot=cover&seed=1" },
-  { "name": "2-fire-drop-zone.jpg", "query": "?shot=fire&seed=1" },
-  { "name": "3-medevac-minimums.jpg", "query": "?shot=final&seed=1" },
+  { "name": "2-bingo-fuel-decision.jpg", "query": "?shot=bingo&seed=1" },
+  { "name": "3-ridge-fire-damage-call.jpg", "query": "?shot=damage&seed=1" },
   { "name": "4-harbour-board-receipt.jpg", "query": "?shot=receipt&seed=1" }
 ]

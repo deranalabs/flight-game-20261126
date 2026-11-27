@@ -5,6 +5,8 @@
 //   cover   - Cinder Ring Trial at dusk, chase view, about to fly ring 8 with the runway beyond
 //   fire    - Tallow Ridge Fire, chase view, the second fire just knocked out, drop meter
 //   final   - Saltmoor Medevac, chase view, short final with the approach callouts, in day light
+//   bingo   - Saltmoor Medevac, the leg home: bingo fuel and the commit-or-divert box, day light
+//   damage  - Tallow Ridge Fire, run-in with a smoke-hurt engine and ailerons: YOUR CALL
 //   receipt - the stamped receipt after the bot's Harbour Board Survey
 //   cockpit - Tallow Ridge Fire, cockpit view, low run-in on a burning slope, live score and combo
 //   debrief - the debrief after the bot's sortie 4 (Ridge strip), grade, lines and flight chart
@@ -20,6 +22,7 @@ import { awardFeats } from '../hangar/feats.js';
 import { fitRefit, refitOffer } from '../hangar/refits.js';
 import { contractFor, objectiveHeadline } from '../story/storyline.js';
 import { TOKENS } from '../identity/palette.js';
+import { hurt } from '../systems/damageModel.js';
 
 function runUntil(ms, pred, maxSeconds = 1500) {
   for (let i = 0; i < maxSeconds * 60 && ms.status === 'flying'; i++) {
@@ -40,7 +43,7 @@ function flyCareer(n) {
     const result = missionResult(ms);
     const { fuelBill } = recordFlight(career, result, ms.ac, def.client);
     recordScore(career, def.id, scored);
-    const settled = settleSortie(career, def, scored, MISSIONS.length);
+    const settled = settleSortie(career, def, scored, MISSIONS.length, ms.extra);
     const feats = awardFeats(career, { ms, scored, result, debtLeft: debtLeft(career) });
     const refits = refitOffer(career);
     // the pilot's refits: the night kit before the lantern run, then the first card dealt
@@ -102,6 +105,35 @@ export const SHOTS = {
     // the same moment in day light, so water, lane and Tern read in a small cell (the sortie flies at dusk)
     ms.def = { ...ms.def, timeOfDay: 'day' };
     return { ms, career: flyCareer(2).career, view: 'chase', camera: { ...LOW_CHASE, lookDown: -8 } };
+  },
+  bingo() {
+    const ms = startMission(missionById('medevac'), {}, 1);
+    runUntil(ms, (m) => {
+      const o = currentObjective(m);
+      return m.index === m.objectives.length - 1 && !m.ac.onSurface && m.ac.agl > 150 && distTo(m, o.rw.x, o.rw.z) < 2300;
+    });
+    // fuel at bingo on the way home; the box held open as it opens
+    ms.ac.fuel.litres = ms.ac.fuel.capacity * 0.146;
+    ms.extra.hold = true;
+    stepMission(ms, {}, { bot: true });
+    ms.extra.bingo.at = ms.t - 3;
+    ms.def = { ...ms.def, timeOfDay: 'day' };
+    return { ms, career: flyCareer(2).career, view: 'chase', camera: { distance: 22, height: 3, side: -8, lookAhead: 60, lookDown: -2, fov: 62 } };
+  },
+  damage() {
+    const ms = startMission(missionById('waterBomber'), {}, 1);
+    const fires = ms.objectives.filter((o) => o.kind === 'fire');
+    runUntil(ms, (m) => {
+      const o = currentObjective(m);
+      return o === fires[1] && o.bot && o.bot.phase === 'pass' && m.ac.waterKg > 700 && distTo(m, o.fire.x, o.fire.z) < 600;
+    });
+    // smoke and heat off the first fire: the engine and the ailerons hurt, the box held open
+    hurt(ms.ac.damage, 'engine', 38, 'smoke through the intake', ms.t);
+    hurt(ms.ac.damage, 'controls', 30, 'heat on the aileron cables', ms.t);
+    ms.extra.hold = true;
+    stepMission(ms, {}, { bot: true });
+    ms.extra.repair.at = ms.t - 3;
+    return { ms, career: flyCareer(4).career, view: 'chase', camera: { distance: 26, height: 9, side: -5, lookAhead: 60, lookDown: -14, fov: 62 } };
   },
   receipt() {
     const { career, last } = flyCareer(MISSIONS.findIndex((m) => m.id === 'dockSurvey') + 1);

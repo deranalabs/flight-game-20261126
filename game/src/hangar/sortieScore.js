@@ -29,12 +29,14 @@ export function scoreSortie(ms, combo = 0) {
   const land = landings.length ? landings.reduce((s, l) => s + l.points, 0) / landings.length : null;
   const best = landings.reduce((b, l) => (!b || l.points > b.points ? l : b), null);
   const par = ms.def.parTime;
+  const T = ms.t + (ms.extra?.timeAdd ?? 0);
   const fuelFrac = sc.fuelStart > 0 ? Math.min(1, ms.ac.fuel.litres / sc.fuelStart) : 0;
   const lines = [
     { key: 'objectives', label: `Objectives ${Math.min(ms.index, n)}/${n}`, pts: Math.round(MAX.objectives * Math.min(ms.index, n) / n) },
     { key: 'touchdown', label: best ? `Touchdown ${best.fpm} ft/min · ${best.across ?? '-'} m off · ${best.bounces} bounce${best.bounces === 1 ? '' : 's'}` : 'Touchdown: none yet', pts: land === null ? 0 : Math.round(MAX.touchdown * land / 100) },
     // time and fuel count only once the job is done, so a crash cannot bank them
-    { key: 'time', label: `Time ${fmt(ms.t)} against par ${fmt(par)}`, pts: done ? Math.round(MAX.time * Math.max(0, Math.min(1, 2 - ms.t / par))) : 0 },
+    // a divert or a field repair adds its minutes to the clock
+    { key: 'time', label: `Time ${fmt(T)} against par ${fmt(par)}`, pts: done ? Math.round(MAX.time * Math.max(0, Math.min(1, 2 - T / par))) : 0 },
     { key: 'fuel', label: `Fuel left ${Math.round(fuelFrac * 100)}% of the load`, pts: done ? Math.round(MAX.fuel * fuelFrac) : 0 },
   ];
   const base = lines.reduce((s, l) => s + l.pts, 0);
