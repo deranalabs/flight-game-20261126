@@ -142,3 +142,7 @@ td { padding: 3px 4px; font-weight: 700; border-bottom: 1px solid var(--rule); w
 .refit b { font-family: var(--face-display); font-weight: 400; font-size: 22px; }
 .refit span { font-size: 13px; font-weight: 600; }
 .refit em { font-style: normal; font-size: 12px; color: var(--ember); }
+.reach { width: min(1160px, 96%); gap: 8px; }
+.reachcols { display: grid; grid-template-columns: 520px 1fr; gap: 16px; min-height: 0; }
+.reachcols > div { overflow: hidden; max-height: 600px; }
+.reach .ledger td { white-space: normal; }

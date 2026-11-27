@@ -25,7 +25,7 @@ import { tryRestart } from './systems/engine.js';
 import { makeCameraRig, VIEWS } from './camera/cameraRig.js';
 import { makePilotControls } from './input/pilotControls.js';
 import { makeSoundEngine } from './audio/soundEngine.js';
-import { showTitle, showHangar, showBriefing, showDebrief, showPause, clearScreens } from './ui/screens.js';
+import { showTitle, showHangar, showBriefing, showDebrief, showPause, showReach, clearScreens } from './ui/screens.js';
 import { SHOTS, readShotRequest } from './shots/shotMode.js';
 import { flyHeading, makeAutopilot } from './flight/autopilot.js';
 import { stallSpeed } from './aircraft/ternSpec.js';
@@ -117,6 +117,7 @@ function toHangar() {
     onBrief: (id) => toBriefing(id),
     onRepair: (part) => { if (part === 'all' ? repairAll(game.career) : repairPart(game.career, part)) { saveCareer(game.career); toHangar(); } },
     onBuy: (id) => { if (buyUpgrade(game.career, id)) { saveCareer(game.career); toHangar(); } },
+    onReach: () => showReach(game.career, toHangar),
   });
   statusLine.textContent = `Hangar: ${game.career.cash} shillings`;
 }
@@ -167,6 +168,7 @@ function endFlight() {
   const scored = scoreSortie(ms, game.career.score.combo);
   const { fuelBill } = recordFlight(game.career, result, ms.ac, ms.def.client);
   recordScore(game.career, ms.def.id, scored);
+  (game.career.tracks ??= {})[ms.def.id] = ms.track;
   const settled = settleSortie(game.career, ms.def, scored, MISSIONS.length);
   const feats = awardFeats(game.career, { ms, scored, result, debtLeft: debtLeft(game.career) });
   for (const [id, c] of Object.entries(ms.radio.cast)) game.castStates[id] = c.state;

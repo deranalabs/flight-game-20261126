@@ -47,6 +47,7 @@ export function startMission(def, career = {}, seed = 1) {
     steps: 0,
     trace: [], // [ft, kt, fuel %, g] once a second, for the debrief chart
     calls: newCallStats(),
+    track: [], // [x, z] every five seconds, for the chart of routes flown
     ringNo(o) {
       const rings = ringsOf(ms);
       return `${rings.indexOf(o) + 1} of ${rings.length}`;
@@ -103,6 +104,7 @@ export function stepMission(ms, actions = {}, opts = {}) {
   ac.events.length = 0;
   stepAircraft(ac, ms.env, dt);
   ms.t += dt;
+  if (ms.steps % 300 === 0) ms.track.push([Math.round(ac.pos.x), Math.round(ac.pos.z)]);
   if (ms.steps++ % 60 === 0) ms.trace.push(traceSample(ac));
   trackCalls(ms, dt, currentApproach(ms));
   if (ms.def.update) ms.def.update(ms, dt, ctx);

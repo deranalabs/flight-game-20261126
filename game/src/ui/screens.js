@@ -18,8 +18,8 @@ import { MAX, improveTip } from '../hangar/sortieScore.js';
 import { TOKENS, WORDMARK, SERVICE, stamp } from '../identity/palette.js';
 import { contractFor, MISSION_TYPES, CHOICE } from '../story/storyline.js';
 import { PEOPLE, personState, clerkPatience } from '../world/cast.js';
-import { findSpots } from '../world/gazetteer.js';
-import { ISLANDS } from '../terrain/islandLayout.js';
+import { findSpots, GAZETTEER, REACH } from '../world/gazetteer.js';
+import { ISLANDS, WORLD_HALF } from '../terrain/islandLayout.js';
 import { FEATS, featsEarned } from '../hangar/feats.js';
 import { REFITS, refitsFitted } from '../hangar/refits.js';
 
@@ -135,6 +135,7 @@ export function showHangar(career, castStates, h) {
   const el = mount(`
     <div class="topbar">
       <div class="logo">${WORDMARK}<small>${SERVICE}</small></div>
+      <button class="ghost" id="reach">CHART<small>& logbook</small></button>
       <div class="owed-block">${stampTag(left ? 'DUE' : 'PAID', 104)}<div><div class="kick">CH ${ch.no} · ${esc(ch.title)} · ${done}/${MISSIONS.length} FLOWN</div><div class="owed">${sh(left)}<span> SH OWED</span></div></div></div>
       <div class="counts"><div><b>${featsEarned(career)}<i>/${FEATS.length}</i></b>FEATS</div><div><b>${refitsFitted(career)}<i>/${REFITS.length}</i></b>REFITS</div>
         <div><b>${Object.keys(career.finds ?? {}).length}<i>/${findSpots(ISLANDS).length}</i></b>FINDS</div><div><b>${sh(career.cash)}</b>CASH SH</div></div>
@@ -154,7 +155,59 @@ export function showHangar(career, castStates, h) {
   el.querySelectorAll('.mission').forEach((row) => { row.onclick = () => { if (row.dataset.open === 'true') h.onBrief(row.dataset.id); }; });
   el.querySelectorAll('[data-repair]').forEach((b) => { b.onclick = () => h.onRepair(b.dataset.repair); });
   el.querySelectorAll('[data-buy]').forEach((b) => { b.onclick = () => h.onBuy(b.dataset.buy); });
+  el.querySelector('#reach').onclick = () => h.onReach?.();
   return el;
+}
+
+/**
+ * The chart of the Reach and the logbook: the islands by the gazetteer's names with their
+ * harbours and trades, every route flown (the last flight of each contract), the hidden
+ * finds spotted, and the pilot's logbook.
+ */
+export function showReach(career, onBack) {
+  const found = career.finds ?? {};
+  const finds = findSpots(ISLANDS);
+  const log = career.logbook.slice(0, 12).map((e) => `<tr><td>#${e.n}</td><td>${esc(e.title)}</td><td class="${e.done ? 'pay' : 'owe'}">${e.done ? (e.stars ? '★'.repeat(e.stars) : 'FIND') : 'FAIL'}</td><td>${e.time ? fmtTime(e.time) : '–'}</td><td>${esc(e.landing)}</td><td>${esc(e.note ?? '')}</td></tr>`).join('')
+    || '<tr><td colspan="6" class="quiet">No flights yet.</td></tr>';
+  const el = mount(`<div class="brief panel reach">
+    <div class="topbar"><h1>THE ${esc(REACH.toUpperCase())}</h1><div class="kick">${Object.keys(career.tracks ?? {}).length} ROUTES FLOWN · ${Object.keys(found).length}/${finds.length} FINDS</div>
+      <button class="ghost" id="back" style="margin-left:auto">Back to the board</button></div>
+    <div class="reachcols"><canvas class="chart-map" width="520" height="520"></canvas>
+      <div><table class="ledger">${GAZETTEER.map((i) => `<tr><td><b>${esc(i.name)}</b><br><span class="quiet">${esc(i.harbour)} · ${esc(i.trade)} · ${esc(i.custom)}</span></td></tr>`).join('')}</table>
+      <h2 class="kick">LOGBOOK</h2><table class="ledger">${log}</table></div></div></div>`);
+  const cv = el.querySelector('canvas.chart-map');
+  const ctx = cv.getContext('2d');
+  const k = cv.width / (2 * WORLD_HALF);
+  const at = (x, z) => [(x + WORLD_HALF) * k, (z + WORLD_HALF) * k];
+  ctx.fillStyle = '#0f2a30';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.strokeStyle = 'rgba(239,230,207,0.08)';
+  for (let i = 1; i < 8; i++) { ctx.beginPath(); ctx.moveTo(i * cv.width / 8, 0); ctx.lineTo(i * cv.width / 8, cv.height); ctx.moveTo(0, i * cv.height / 8); ctx.lineTo(cv.width, i * cv.height / 8); ctx.stroke(); }
+  for (const isl of ISLANDS) {
+    const [x, y] = at(isl.x, isl.z);
+    ctx.fillStyle = isl.shape === 'volcano' ? '#4a3a30' : '#3c5a3a';
+    ctx.beginPath(); ctx.arc(x, y, isl.r * k, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = TOKENS.lagoon;
+  for (const track of Object.values(career.tracks ?? {})) {
+    ctx.beginPath();
+    track.forEach(([x, z], i) => { const [px, py] = at(x, z); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.stroke();
+  }
+  for (const f of finds) {
+    const [x, y] = at(f.x, f.z);
+    ctx.fillStyle = found[f.id] ? TOKENS.sulphur : 'rgba(239,230,207,0.25)';
+    ctx.beginPath(); ctx.arc(x, y, found[f.id] ? 4 : 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.font = `400 16px ${getComputedStyle(document.documentElement).getPropertyValue('--face-display')}`;
+  ctx.textAlign = 'center';
+  for (const isl of ISLANDS) {
+    const [x, y] = at(isl.x, isl.z);
+    ctx.fillStyle = TOKENS.ledger;
+    ctx.fillText(isl.name.toUpperCase(), x, y + 5);
+  }
+  el.querySelector('#back').onclick = onBack;
 }
 
 /** Briefing: the chapter, the contract and who it helps, the day's event, the choice. */
