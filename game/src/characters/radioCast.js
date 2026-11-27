@@ -9,6 +9,7 @@ export const CAST = {
   pip: { name: 'Pip Calloway', role: 'Gannet Point keeper', color: '#c5e1a5', home: 'Gannet Point', state: 'Trimming wicks' },
   junie: { name: 'Junie Ashby', role: 'Cinder Observatory', color: '#b39ddb', home: 'Cinder Observatory', state: 'Reading the barometer' },
   wren: { name: 'Wren Tallis', role: 'Saltmoor post office', color: '#80cbc4', home: 'Saltmoor', state: 'Sorting sacks' },
+  ansel: { name: 'Ansel Mott', role: 'Clerk, Port Halyard Board', color: '#e5482d', home: 'Port Halyard', state: 'Keeping the ledger' },
 };
 
 /** Lines for events every mission shares. {name} and {miss} are filled in. */

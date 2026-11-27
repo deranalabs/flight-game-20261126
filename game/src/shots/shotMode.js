@@ -3,16 +3,23 @@
 // Every shot that shows score, combo or the Harbour Board note first has the autopilot
 // fly the sorties before it, so those numbers are the bot's real career.
 //   cover   - Cinder Ring Trial at dusk, chase view, about to fly ring 8 with the runway beyond
+//   fire    - Tallow Ridge Fire, chase view, the second fire just knocked out, drop meter
+//   final   - Saltmoor Medevac, chase view, short final with the approach callouts
+//   receipt - the stamped receipt after the bot's Harbour Board Survey
 //   cockpit - Tallow Ridge Fire, cockpit view, low run-in on a burning slope, live score and combo
 //   debrief - the debrief after the bot's sortie 4 (Ridge strip), grade, lines and flight chart
 //   mail    - Morning Mail Run, chase view, short final onto the Saltmoor water lane
-//   hangar  - the hangar screens after the autopilot has flown the first seven sorties
+//   hangar  - the hangar board after the autopilot has flown the first seven sorties
 
 import { missionById, MISSIONS } from '../missions/index.js';
 import { startMission, stepMission, currentObjective, missionResult } from '../missions/missionRunner.js';
-import { newCareer, recordFlight, buyUpgrade, repairAll } from '../hangar/careerSave.js';
+import { newCareer, recordFlight, repairAll } from '../hangar/careerSave.js';
 import { scoreSortie, recordScore } from '../hangar/sortieScore.js';
-import { payDebt } from '../hangar/harbourDebt.js';
+import { settleSortie, debtLeft } from '../hangar/harbourDebt.js';
+import { awardFeats } from '../hangar/feats.js';
+import { fitRefit, refitOffer } from '../hangar/refits.js';
+import { contractFor, objectiveHeadline } from '../story/storyline.js';
+import { TOKENS } from '../identity/palette.js';
 
 function runUntil(ms, pred, maxSeconds = 1500) {
   for (let i = 0; i < maxSeconds * 60 && ms.status === 'flying'; i++) {
@@ -33,10 +40,14 @@ function flyCareer(n) {
     const result = missionResult(ms);
     const { fuelBill } = recordFlight(career, result, ms.ac, def.client);
     recordScore(career, def.id, scored);
-    const debtPaid = payDebt(career, scored);
-    if (def.order === 3) buyUpgrade(career, 'nightKit');
+    const settled = settleSortie(career, def, scored, MISSIONS.length);
+    const feats = awardFeats(career, { ms, scored, result, debtLeft: debtLeft(career) });
+    const refits = refitOffer(career);
+    // the pilot's refits: the night kit before the lantern run, then the first card dealt
+    if (def.order === 3) fitRefit(career, 'nightKit');
+    if (def.order === 5 || def.order === 8) fitRefit(career, refits[0].id);
     repairAll(career);
-    last = { ms, result, fuelBill, extra: { scored, debtPaid, trace: ms.trace, career } };
+    last = { ms, result, fuelBill, extra: { scored, debtPaid: settled.total, settled, trace: ms.trace, career, feats, refits: refitOffer(career), contract: contractFor(def.id), last: def.order === MISSIONS.length } };
   }
   return { career, last };
 }
@@ -70,6 +81,27 @@ export const SHOTS = {
   },
   debrief() {
     const { career, last } = flyCareer(4);
+    return { ...last, career, view: 'debrief' };
+  },
+  fire() {
+    const ms = startMission(missionById('waterBomber'), {}, 1);
+    const fires = ms.objectives.filter((o) => o.kind === 'fire');
+    runUntil(ms, () => fires[1].doneAt !== undefined);
+    // a second on, the water still falling on the slope
+    runUntil(ms, (m) => m.t > fires[1].doneAt + 1.2);
+    return { ms, career: flyCareer(4).career, view: 'chase', camera: { distance: 24, height: 7, side: 7, lookAhead: 10, lookDown: -6, fov: 62 },
+      banner: { text: objectiveHeadline('fire', contractFor('waterBomber')), color: TOKENS.lagoon, sub: 'Sawmill Slope and Pine Shoulder are out · one fire left', big: true } };
+  },
+  final() {
+    const ms = startMission(missionById('medevac'), {}, 1);
+    runUntil(ms, (m) => {
+      const o = currentObjective(m);
+      return o && o.kind === 'land' && m.ac.agl * 3.28084 < 260 && m.ac.agl > 30 && distTo(m, o.rw.x, o.rw.z) < 1400;
+    });
+    return { ms, career: flyCareer(2).career, view: 'chase', camera: { ...LOW_CHASE, lookDown: -8 } };
+  },
+  receipt() {
+    const { career, last } = flyCareer(MISSIONS.findIndex((m) => m.id === 'dockSurvey') + 1);
     return { ...last, career, view: 'debrief' };
   },
   mail() {

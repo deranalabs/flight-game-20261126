@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { scoreSortie, recordScore, comboMultiplier, gradeOf, improveTip, MAX } from '../game/src/hangar/sortieScore.js';
-import { DEBT, debtLeft, payDebt, chapterFor } from '../game/src/hangar/harbourDebt.js';
+import { DEBT, debtLeft, payDebt, chapterFor, settleSortie, standing } from '../game/src/hangar/harbourDebt.js';
 import { newCareer, recordFlight } from '../game/src/hangar/careerSave.js';
 import { missionResult } from '../game/src/missions/missionRunner.js';
 import { MISSIONS } from '../game/src/missions/index.js';
@@ -55,7 +55,7 @@ test('the Board takes completed sorties only and never past the debt; chapters f
   c.debtPaid = DEBT - 10;
   assert.equal(payDebt(c, { done: true, total: 900 }), 10);
   assert.equal(debtLeft(c), 0);
-  assert.deepEqual([1, 3, 4, 7, 8, 10, 11].map((n) => chapterFor(n).no), [1, 1, 2, 2, 3, 3, 3]);
+  assert.deepEqual([1, 2, 3, 6, 7, 9, 10].map((n) => chapterFor(n, 10).no), [1, 1, 2, 2, 3, 3, 4]);
 });
 
 test('the bot flies every sortie for the Board and clears the debt', () => {
@@ -68,9 +68,11 @@ test('the bot flies every sortie for the Board and clears the debt', () => {
     const s = scoreSortie(ms, c.score.combo);
     recordFlight(c, missionResult(ms), ms.ac, def.client);
     recordScore(c, def.id, s);
-    payDebt(c, s);
+    settleSortie(c, def, s, MISSIONS.length);
     grades.push(`${def.order}:${s.grade}${s.base}x${s.mult}`);
   }
   console.log(grades.join(' '), 'total', c.score.total, 'left', debtLeft(c));
   assert.equal(debtLeft(c), 0);
+  assert.equal(standing(c).word, 'PAID');
+  assert.equal(c.feeCharged, true, 'the Board raised its fee on the way');
 });

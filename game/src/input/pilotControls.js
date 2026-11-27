@@ -13,7 +13,8 @@ export const KEY_HELP = [
   ['F / V', 'Flaps down / up a stage'],
   ['B (hold)', 'Brakes on runways'],
   ['Space', 'Drop sack or water'],
-  ['C', 'Chase / cockpit view'],
+  ['C', 'Chase / cockpit / tail view'],
+  ['Gamepad', 'Left stick fly, triggers throttle, A drop, Y camera, bumpers flaps'],
   ['M', 'Mouse yoke on / off'],
   ['Z', 'Autopilot: hold heading and height'],
   ['R', 'Restart a stopped engine'],
@@ -69,6 +70,7 @@ export function makePilotControls(target = window) {
       st.aileron = axis(st.aileron, any('KeyA', 'ArrowLeft'), any('KeyD', 'ArrowRight'), dt);
     }
     st.rudder = axis(st.rudder, any('KeyQ'), any('KeyE'), dt, 2.2, 3);
+    const pad = readPad(st, dt);
     if (any('ShiftLeft', 'ShiftRight', 'Equal', 'NumpadAdd')) st.throttle = clamp(st.throttle + 0.45 * dt, 0, 1);
     if (any('ControlLeft', 'ControlRight', 'Minus', 'NumpadSubtract')) st.throttle = clamp(st.throttle - 0.45 * dt, 0, 1);
     for (let n = 0; n <= 9; n++) if (pressed.has(`Digit${n}`)) st.throttle = n === 0 ? 1 : n / 10;
@@ -79,12 +81,13 @@ export function makePilotControls(target = window) {
     st.brake = any('KeyB') ? 1 : 0;
     if (pressed.has('KeyM')) st.mouseYoke = !st.mouseYoke;
     const actions = {
-      drop: pressed.has('Space'),
-      camera: pressed.has('KeyC'),
+      drop: pressed.has('Space') || pad.drop,
+      camera: pressed.has('KeyC') || pad.camera,
       restart: pressed.has('KeyR'),
       autopilot: pressed.has('KeyZ'),
       light: pressed.has('KeyL'),
-      pause: pressed.has('Escape') || pressed.has('KeyP'),
+      pause: pressed.has('Escape') || pressed.has('KeyP') || pad.pause,
+      any: pressed.size > 0,
       help: pressed.has('KeyH'),
       mouseYoke: pressed.has('KeyM'),
     };
@@ -92,6 +95,33 @@ export function makePilotControls(target = window) {
     if (!st.dragging) { st.look.yaw *= 1 - Math.min(1, dt * 2); st.look.pitch *= 1 - Math.min(1, dt * 2); }
     return actions;
   };
+
+  // Gamepad (standard mapping): sticks blend into the smoothed surfaces, triggers set power,
+  // bumpers step the flaps, buttons are edges so a held button acts once.
+  const padWas = {};
+  function readPad(cur, dt) {
+    const out = { drop: false, camera: false, pause: false };
+    const gp = globalThis.navigator?.getGamepads?.()?.[0];
+    if (!gp) return out;
+    const dead = (v) => (Math.abs(v) < 0.12 ? 0 : v);
+    const ease = Math.min(1, dt * 10);
+    if (dead(gp.axes[0]) || dead(gp.axes[1])) {
+      cur.aileron += (dead(gp.axes[0]) - cur.aileron) * ease;
+      cur.elevator += (dead(gp.axes[1]) - cur.elevator) * ease;
+    }
+    if (dead(gp.axes[2] ?? 0)) cur.rudder += (dead(gp.axes[2]) - cur.rudder) * ease;
+    const btn = (i) => !!gp.buttons[i]?.pressed;
+    const edge = (i) => { const now = btn(i); const e = now && !padWas[i]; padWas[i] = now; return e; };
+    const rt = gp.buttons[7]?.value ?? 0;
+    const lt = gp.buttons[6]?.value ?? 0;
+    if (rt > 0.05 || lt > 0.05) cur.throttle = clamp(cur.throttle + (rt - lt) * 0.6 * dt, 0, 1);
+    if (edge(5)) cur.flaps = cur.flaps < 0.25 ? 0.5 : 1;
+    if (edge(4)) cur.flaps = cur.flaps > 0.75 ? 0.5 : 0;
+    out.drop = edge(0);
+    out.camera = edge(3);
+    out.pause = edge(9);
+    return out;
+  }
 
   /** Copy the pilot's controls onto the aircraft. */
   st.apply = (ac) => {

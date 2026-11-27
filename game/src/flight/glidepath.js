@@ -74,5 +74,7 @@ export function currentApproach(ms) {
     const a = approachTo(rw, p.x, p.y, p.z);
     if (a && (!best || a.beforeAim < best.beforeAim)) best = { ...a, rw };
   }
+  // the callouts read the same PAPI rule and band as the lights and the ladder
+  if (best) { best.word = slopeWord(best.dev); best.white = papiWhite(best.dev); }
   return best;
 }

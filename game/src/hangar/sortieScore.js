@@ -73,9 +73,9 @@ export function recordScore(c, id, s) {
   return sc;
 }
 
-/** Altitude (ft) and airspeed (kt) once a second, for the debrief chart. */
+/** Altitude (ft), airspeed (kt), fuel (% of tank) and load factor (g) once a second, for the flight recorder. */
 export function traceSample(ac) {
-  return [Math.round(ac.pos.y * 3.28084), Math.round(ac.ias * MS_TO_KT)];
+  return [Math.round(ac.pos.y * 3.28084), Math.round(ac.ias * MS_TO_KT), Math.round((ac.fuel.litres / ac.fuel.capacity) * 100), Math.round(ac.g * 100) / 100];
 }
 
 function fmt(s) {

@@ -7,8 +7,11 @@ import * as THREE from 'three';
 import { glowSprite } from '../render/glowSprite.js';
 
 const mat = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, flatShading: true, ...extra });
-const CREAM = 0xf1e7cf;
-const RED = 0xb8322a;
+// Tidewing livery: ledger cream body, sulphur trim, lagoon teal fin with a basalt tail mark
+const CREAM = 0xefe6cf;
+const RED = 0xe9b21c; // sulphur trim (name kept: it is the trim colour)
+const LAGOON = 0x23a89c;
+const BASALT = 0x1c1815;
 const DARK = 0x2b2f36;
 const GLASS = 0x2a4f6e;
 const FLOAT = 0xc9ccd0;
@@ -196,16 +199,22 @@ export function buildSeaplane() {
   stab.position.set(0, 0.5, 5.6);
   const elevator = hinged(4.4, 0.55, 0.08, RED);
   elevator.position.set(0, 0.5, 6.05);
-  const fin = new THREE.Mesh(taperBox(0.1, 1.6, 0.1, 1.2, 1.2, 0.2), mat(CREAM));
+  const fin = new THREE.Mesh(taperBox(0.1, 1.6, 0.1, 1.2, 1.2, 0.2), mat(LAGOON));
   fin.position.set(0, 1.25, 5.55);
   const rudder = new THREE.Group();
   const rgeo = new THREE.BoxGeometry(0.09, 1.7, 0.6);
   rgeo.translate(0, 0, 0.3);
-  rudder.add(new THREE.Mesh(rgeo, mat(RED)));
+  rudder.add(new THREE.Mesh(rgeo, mat(LAGOON)));
+  // rudder bands: sulphur over basalt, the tail mark of the Port Halyard air service
+  for (const [y, c] of [[0.45, RED], [0.2, BASALT]]) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.18, 0.62), mat(c));
+    band.position.set(0, y, 0.3);
+    rudder.add(band);
+  }
   rudder.position.set(0, 1.3, 6.1);
   // water rudders on the float heels
-  // tail mark: the service's amber dusk sun, one disc through the fin so both sides show it
-  const sun = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.14, 20), mat(0xff9a3c));
+  // tail mark: a sulphur sun on the teal fin, one disc through the fin so both sides show it
+  const sun = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.14, 20), mat(RED, { emissive: 0x3a2a00 }));
   sun.rotation.z = Math.PI / 2;
   sun.position.set(0, 1.3, 5.5);
   body.add(stab, elevator, fin, rudder, sun);

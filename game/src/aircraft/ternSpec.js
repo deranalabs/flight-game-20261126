@@ -42,9 +42,19 @@ export const UPGRADES = [
   { id: 'nightKit', name: 'Night landing lights', cost: 500, blurb: 'brighter lights, lit gauges', apply: (s) => { s.lights = 2; } },
 ];
 
+/** Refit-only parts, fitted from the refit cards and charged to the Board's note. */
+export const REFIT_PARTS = [
+  { id: 'sealedCowl', name: 'Sealed cowl', cost: 600, blurb: '-12% fuel burn at full power', apply: (s) => { s.fuelBurnFull *= 0.88; } },
+  { id: 'cleanStruts', name: 'Faired struts', cost: 750, blurb: '-8% drag, faster cruise', apply: (s) => { s.cd0 *= 0.92; } },
+  { id: 'longAilerons', name: 'Long-span ailerons', cost: 650, blurb: '+18% roll rate', apply: (s) => { s.rollPower *= 1.18; } },
+  { id: 'tallRudder', name: 'Tall rudder', cost: 550, blurb: '+20% yaw authority on the water', apply: (s) => { s.yawPower *= 1.2; } },
+  { id: 'vortexGens', name: 'Vortex generators', cost: 700, blurb: 'stall 3 kt lower, gentler break', apply: (s) => { s.clMax += 0.12; } },
+  { id: 'lightCabin', name: 'Stripped cabin', cost: 500, blurb: '-60 kg, quicker climb', apply: (s) => { s.emptyMass -= 60; } },
+];
+
 export function buildSpec(upgradeIds = []) {
   const s = { ...TERN_BASE, floatToughness: 1 };
-  for (const u of UPGRADES) if (upgradeIds.includes(u.id)) u.apply(s);
+  for (const u of [...UPGRADES, ...REFIT_PARTS]) if (upgradeIds.includes(u.id)) u.apply(s);
   // Every mission that bombs water borrows the fire service tank if none is fitted.
   return s;
 }

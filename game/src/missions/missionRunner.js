@@ -12,6 +12,8 @@ import { condition, PARTS } from '../systems/damageModel.js';
 import { groundHeight } from '../terrain/heightmap.js';
 import { KIT } from './missionKit.js';
 import { traceSample } from '../hangar/sortieScore.js';
+import { trackCalls, newCallStats } from '../feedback/liveCalls.js';
+import { currentApproach } from '../flight/glidepath.js';
 
 /**
  * Begin a mission. career: { upgrades: [], damage: {...} } carries the hangar state in;
@@ -43,7 +45,8 @@ export function startMission(def, career = {}, seed = 1) {
     extra: {},
     warned: {},
     steps: 0,
-    trace: [], // [ft, kt] once a second, for the debrief chart
+    trace: [], // [ft, kt, fuel %, g] once a second, for the debrief chart
+    calls: newCallStats(),
     ringNo(o) {
       const rings = ringsOf(ms);
       return `${rings.indexOf(o) + 1} of ${rings.length}`;
@@ -101,6 +104,7 @@ export function stepMission(ms, actions = {}, opts = {}) {
   stepAircraft(ac, ms.env, dt);
   ms.t += dt;
   if (ms.steps++ % 60 === 0) ms.trace.push(traceSample(ac));
+  trackCalls(ms, dt, currentApproach(ms));
   if (ms.def.update) ms.def.update(ms, dt, ctx);
 
   for (const e of ac.events) {

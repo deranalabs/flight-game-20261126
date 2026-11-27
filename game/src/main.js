@@ -3,6 +3,16 @@
 // the 3D world, the instrument panel and HUD, sound, and the debrief. ?shot=<name>
 // freezes a real moment of play for the screenshots.
 
+import { applyPaletteToCss, TOKENS } from './identity/palette.js';
+import { CHAPTERS, contractFor, MISSION_TYPES, CHOICE, objectiveHeadline } from './story/storyline.js';
+import { islandById } from './world/gazetteer.js';
+import { personState } from './world/cast.js';
+import { eventFor } from './world/events.js';
+import { settleSortie, debtLeft, chapterFor, squeezeSortie } from './hangar/harbourDebt.js';
+import { awardFeats } from './hangar/feats.js';
+import { refitOffer, fitRefit } from './hangar/refits.js';
+import { callsFor } from './feedback/liveCalls.js';
+import { scopeLine } from './story/counts.js';
 import { MISSIONS, missionById } from './missions/index.js';
 import { STEP } from './flight/flightModel.js';
 import { animateSeaplane } from './aircraft/seaplaneModel.js';
@@ -12,7 +22,7 @@ import { startMission, stepMission, missionResult, currentObjective } from './mi
 import { loadCareer, saveCareer, recordFlight, repairAll, repairPart, buyUpgrade } from './hangar/careerSave.js';
 import { buildWorld, makeRenderer } from './render/worldScene.js';
 import { tryRestart } from './systems/engine.js';
-import { makeCameraRig } from './camera/cameraRig.js';
+import { makeCameraRig, VIEWS } from './camera/cameraRig.js';
 import { makePilotControls } from './input/pilotControls.js';
 import { makeSoundEngine } from './audio/soundEngine.js';
 import { showTitle, showHangar, showBriefing, showDebrief, showPause, clearScreens } from './ui/screens.js';
@@ -21,8 +31,19 @@ import { flyHeading, makeAutopilot } from './flight/autopilot.js';
 import { stallSpeed } from './aircraft/ternSpec.js';
 import { LANDMARKS, RUNWAYS } from './terrain/islandLayout.js';
 import { scoreSortie, recordScore, nextMultiplier } from './hangar/sortieScore.js';
-import { payDebt, debtLeft, DEBT } from './hangar/harbourDebt.js';
+import { currentApproach } from './flight/glidepath.js';
 import * as THREE from 'three';
+
+applyPaletteToCss();
+const SCOPE = scopeLine(MISSIONS);
+/** Seconds the chapter plate holds at the start of a sortie (any key skips it). */
+const PLATE_SECONDS = 2.4;
+/** Seconds of key hints at the start of a sortie, below Expert. */
+const HINT_SECONDS = 60;
+const HINTS = [['W / S', 'nose down / up'], ['A / D', 'roll'], ['SHIFT / CTRL', 'throttle'], ['F / V', 'flaps'], ['C', 'camera']];
+/** Easy assist: rudder follows the slip, and the stick eases off near the stall. */
+const EASY_COORD = 3;
+const EASY_STALL_EASE = 0.4;
 
 const worldCanvas = document.getElementById('world');
 const hudCanvas = document.getElementById('hud');
@@ -53,6 +74,8 @@ const game = {
   endIn: null,
   shot: null,
   selected: null,
+  assist: 'standard',
+  plate: null,
 };
 
 function resize() {
@@ -97,7 +120,15 @@ function toBriefing(id) {
   game.selected = id;
   game.mode = 'brief';
   const preview = startMission(def, game.career, 1);
-  showBriefing(def, preview.objectives.map((o) => o.label(preview)), game.career, () => startFlight(def), toHangar);
+  const contract = contractFor(def.id);
+  const chapter = chapterFor(def.order, MISSIONS.length);
+  const story = {
+    chapter, contract, island: islandById(contract.island), person: personState(contract.who, chapter.no, game.career.trust[contract.who] ?? 0),
+    event: eventFor(def.id), left: debtLeft(game.career),
+    choice: def.order === squeezeSortie(MISSIONS.length) && !game.career.choiceDone ? CHOICE : null,
+    onChoose: (id) => { game.career.choice = id; saveCareer(game.career); },
+  };
+  showBriefing(def, preview.objectives.map((o) => o.label(preview)), game.career, () => startFlight(def), toHangar, story);
 }
 
 function startFlight(def) {
@@ -113,7 +144,14 @@ function startFlight(def) {
   game.mode = 'flying';
   game.endIn = null;
   game.toast = null;
-  game.banner = { text: def.title.toUpperCase(), color: '#ffbf3c', sub: currentObjective(game.ms).label(game.ms), until: game.ms.t + 4 };
+  const chapter = chapterFor(def.order, MISSIONS.length);
+  const contract = contractFor(def.id);
+  game.plate = { chapter, title: def.title.toUpperCase(), line: contract.before, clerk: chapter.clerk, left: debtLeft(game.career), until: PLATE_SECONDS };
+  game.ms.radio.line('ansel', chapter.clerk, 0);
+  const ev = eventFor(def.id);
+  game.banner = ev
+    ? { text: ev.title, color: TOKENS.sulphur, sub: ev.cue, until: PLATE_SECONDS + 4 }
+    : { text: def.title.toUpperCase(), color: TOKENS.sulphur, sub: currentObjective(game.ms).label(game.ms), until: PLATE_SECONDS + 3 };
   statusLine.textContent = `Flying ${def.title}`;
 }
 
@@ -123,12 +161,17 @@ function endFlight() {
   const scored = scoreSortie(ms, game.career.score.combo);
   const { fuelBill } = recordFlight(game.career, result, ms.ac, ms.def.client);
   recordScore(game.career, ms.def.id, scored);
-  const debtPaid = payDebt(game.career, scored);
+  const settled = settleSortie(game.career, ms.def, scored, MISSIONS.length);
+  const feats = awardFeats(game.career, { ms, scored, result, debtLeft: debtLeft(game.career) });
   for (const [id, c] of Object.entries(ms.radio.cast)) game.castStates[id] = c.state;
   saveCareer(game.career);
   game.mode = 'debrief';
   sound.event(result.done ? 'success' : 'fail');
-  showDebrief(ms.def, result, fuelBill, { onRetry: () => startFlight(ms.def), onHangar: toHangar }, { scored, debtPaid, trace: ms.trace, career: game.career });
+  showDebrief(ms.def, result, fuelBill, {
+    onRetry: () => startFlight(ms.def),
+    onHangar: toHangar,
+    onRefit: (id) => { if (fitRefit(game.career, id)) saveCareer(game.career); },
+  }, { scored, debtPaid: settled.total, settled, trace: ms.trace, career: game.career, feats, refits: result.done ? refitOffer(game.career) : [], contract: contractFor(ms.def.id), last: ms.def.order === MISSIONS.length });
   statusLine.textContent = `${ms.def.title}: ${result.done ? `${result.stars} stars` : 'failed'}`;
 }
 
@@ -148,10 +191,11 @@ function flyFrame(dt) {
   const ac = ms.ac;
   const actions = input.update(dt);
   if (actions.pause) { pause(); return; }
-  if (actions.camera) game.view = game.view === 'chase' ? 'cockpit' : 'chase';
+  if (actions.camera) game.view = VIEWS[(VIEWS.indexOf(game.view) + 1) % VIEWS.length];
+  if (actions.any && game.plate) game.plate.until = 0;
   if (actions.light) game.landingLight = !game.landingLight;
   if (actions.restart && tryRestart(ac.engine, ac.fuel.litres, ac.damage)) ms.radio.line('teodor', 'Cranking... come on, girl.', ms.t);
-  if (actions.autopilot) {
+  if (actions.autopilot && game.assist !== 'expert') {
     game.autopilot = game.autopilot ? null : { ap: makeAutopilot(), hdg: ac.hdg, alt: ac.pos.y, speed: Math.max(36, ac.ias) };
   }
   if (game.autopilot && !ac.onSurface) {
@@ -160,6 +204,10 @@ function flyFrame(dt) {
   } else {
     if (game.autopilot) game.autopilot = null;
     input.apply(ac);
+    if (game.assist === 'easy' && !ac.onSurface) {
+      if (Math.abs(input.rudder) < 0.05) ac.controls.rudder = Math.max(-1, Math.min(1, ac.beta * EASY_COORD));
+      if (ac.stallWarn && ac.controls.elevator > 0) ac.controls.elevator *= EASY_STALL_EASE;
+    }
   }
   game.acc += Math.min(dt, 0.1);
   let first = true;
@@ -174,7 +222,7 @@ function flyFrame(dt) {
       else if (e.type === 'bounce' || e.type === 'crash') sound.event(e.type);
       else if (e.type === 'landed' && e.landing) {
         const L = e.landing;
-        game.banner = { text: `TOUCHDOWN ${Math.round(L.fpm)} FT/MIN`, color: L.fpm < 300 ? '#7ee08f' : '#ffbf3c', sub: L.place ? `${Math.abs(L.place.across).toFixed(1)} m off centre · ${L.bounces} bounce${L.bounces === 1 ? '' : 's'}` : 'on the water', until: ms.t + 3 };
+        game.banner = { text: `TOUCHDOWN ${Math.round(L.fpm)} FT/MIN`, color: L.fpm < 300 ? TOKENS.lagoon : TOKENS.sulphur, sub: L.place ? `${Math.abs(L.place.across).toFixed(1)} m off centre · ${L.bounces} bounce${L.bounces === 1 ? '' : 's'}` : 'on the water', until: ms.t + 3 };
       }
     }
     if (ms.status !== 'flying') break;
@@ -186,7 +234,7 @@ function flyFrame(dt) {
     const next = currentObjective(ms);
     // a ring gets a small toast up top, so the big banner never hides the next ring
     if (done.kind === 'ring') game.toast = { text: ringClearedText(ms, done), until: ms.t + 2 };
-    else game.banner = { text: 'OBJECTIVE DONE', color: '#7ee08f', sub: next ? next.label(ms) : 'Mission complete', until: ms.t + 3 };
+    else game.banner = { text: objectiveHeadline(done.kind, contractFor(ms.def.id), !next), color: TOKENS.lagoon, sub: next ? next.label(ms) : contractFor(ms.def.id).after, until: ms.t + 3, big: true };
   }
   if (ms.radio.current && ms.radio.current !== game.lastRadio) { game.lastRadio = ms.radio.current; sound.event('radio'); }
   if (ms.extra.flashAt && ms.extra.flashAt !== game.lastFlash) { game.lastFlash = ms.extra.flashAt; sound.event('thunder'); }
@@ -195,8 +243,8 @@ function flyFrame(dt) {
     if (game.endIn === null) {
       game.endIn = ms.status === 'done' ? 3 : 3.5;
       game.banner = ms.status === 'done'
-        ? { text: 'MISSION COMPLETE', color: '#7ee08f', sub: ms.def.title, until: Infinity }
-        : { text: ms.ac.crashed ? 'CRASHED' : 'MISSION FAILED', color: '#ff6b5a', sub: ms.failReason, until: Infinity };
+        ? { text: contractFor(ms.def.id).headline, color: TOKENS.lagoon, sub: contractFor(ms.def.id).after, until: Infinity, big: true }
+        : { text: ms.ac.crashed ? 'CRASHED' : 'MISSION FAILED', color: TOKENS.sulphur, sub: ms.failReason, until: Infinity, big: true };
     } else if ((game.endIn -= dt) <= 0) endFlight();
   }
   sound.update(ac, false);
@@ -235,11 +283,15 @@ function renderFlight(ms, dt, opts = {}) {
   const H = window.innerHeight;
   hud.clearRect(0, 0, W, H);
   const panel = drawInstrumentPanel(hud, W, H, ac, game.view, { autopilot: !!game.autopilot, bug: objectiveBearing(ms) });
-  const banner = game.banner && clock < game.banner.until ? game.banner : null;
+  const banner = opts.banner ?? (game.banner && clock < game.banner.until ? game.banner : null);
   drawFlightHud(hud, W, H, ms, {
     missionNo: ms.def.order, missionCount: MISSIONS.length, view: game.view,
     live: scoreSortie(ms, game.career.score.combo), nextMult: nextMultiplier(game.career.score.combo),
-    debtFrac: 1 - debtLeft(game.career) / DEBT,
+    note: { left: debtLeft(game.career), chapter: chapterFor(ms.def.order, MISSIONS.length) },
+    type: contractFor(ms.def.id).type, typeName: MISSION_TYPES[contractFor(ms.def.id).type],
+    calls: callsFor(ms, currentApproach(ms)), scope: SCOPE,
+    plate: opts.plate ?? (game.plate && clock < game.plate.until ? game.plate : null),
+    hints: !opts.t && game.assist !== 'expert' && clock < HINT_SECONDS && clock > PLATE_SECONDS ? HINTS : null,
     panelTop: panel.top, banner, radio: ms.radio.current,
     toast: game.toast && clock < game.toast.until ? game.toast.text : null,
     rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,
@@ -299,7 +351,7 @@ function renderShot(dt) {
     return;
   }
   game.view = s.view;
-  renderFlight(s.ms, 0, { t: s.t, landingLight: s.landingLight, camera: { ...(s.camera ?? {}), snap: true } });
+  renderFlight(s.ms, 0, { t: s.t, landingLight: s.landingLight, banner: s.banner, plate: s.plate, camera: { ...(s.camera ?? {}), snap: true } });
   s.frames = (s.frames ?? 0) + 1;
   if (s.frames === 3) { document.title = `${document.title} [shot ready]`; window.__shotReady = true; }
 }
@@ -332,6 +384,6 @@ const shotReq = readShotRequest();
 if (shotReq) startShot(shotReq);
 else {
   ensureWorld('morning', 'breezy');
-  showTitle(() => { sound.start(); toHangar(); }, game.career);
+  showTitle((assist) => { game.assist = assist; sound.start(); toHangar(); }, game.career, { scope: SCOPE, chapters: CHAPTERS });
 }
 requestAnimationFrame(frame);

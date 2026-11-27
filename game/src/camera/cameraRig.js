@@ -1,9 +1,15 @@
 // Cameras: a chase view that trails behind and above, leads into turns and never dips
-// under the water or the hills; a cockpit view at the pilot's eye with mouse head-look;
-// and a slow orbit for the hangar and the debrief.
+// under the water or the hills; a tail view, low and close behind the fin; a cockpit view
+// at the pilot's eye with mouse head-look; and a slow orbit for the hangar and the
+// debrief. Switching between chase and tail blends, since both ease toward their spot.
 
 import * as THREE from 'three';
 import { groundHeight } from '../terrain/heightmap.js';
+
+/** The tail view: close behind the fin, just above it. */
+export const TAIL = { distance: 11, height: 2.4 };
+/** Order the C key cycles the flying views in. */
+export const VIEWS = ['chase', 'cockpit', 'tail'];
 
 export function makeCameraRig(camera) {
   const rig = {
@@ -39,8 +45,9 @@ export function makeCameraRig(camera) {
       return;
     }
     // chase: behind along the flight path, up a little, smoothed
-    const back = opts.distance ?? 21;
-    const up = opts.height ?? 5.5;
+    const tail = rig.mode === 'tail';
+    const back = opts.distance ?? (tail ? TAIL.distance : 21);
+    const up = opts.height ?? (tail ? TAIL.height : 5.5);
     const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
     const flat = new THREE.Vector3(fwd.x, 0, fwd.z);
     if (flat.lengthSq() < 0.01) flat.set(0, 0, -1);
