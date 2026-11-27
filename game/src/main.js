@@ -50,7 +50,7 @@ const game = {
   t: 0,
   banner: null,
   toast: null,
-  endAt: null,
+  endIn: null,
   shot: null,
   selected: null,
 };
@@ -111,9 +111,9 @@ function startFlight(def) {
   game.autopilot = null;
   game.landingLight = def.timeOfDay === 'night';
   game.mode = 'flying';
-  game.endAt = null;
+  game.endIn = null;
   game.toast = null;
-  game.banner = { text: def.title.toUpperCase(), color: '#ffbf3c', sub: currentObjective(game.ms).label(game.ms), until: game.t + 4 };
+  game.banner = { text: def.title.toUpperCase(), color: '#ffbf3c', sub: currentObjective(game.ms).label(game.ms), until: game.ms.t + 4 };
   statusLine.textContent = `Flying ${def.title}`;
 }
 
@@ -174,7 +174,7 @@ function flyFrame(dt) {
       else if (e.type === 'bounce' || e.type === 'crash') sound.event(e.type);
       else if (e.type === 'landed' && e.landing) {
         const L = e.landing;
-        game.banner = { text: `TOUCHDOWN ${Math.round(L.fpm)} FT/MIN`, color: L.fpm < 300 ? '#7ee08f' : '#ffbf3c', sub: L.place ? `${Math.abs(L.place.across).toFixed(1)} m off centre · ${L.bounces} bounce${L.bounces === 1 ? '' : 's'}` : 'on the water', until: game.t + 3 };
+        game.banner = { text: `TOUCHDOWN ${Math.round(L.fpm)} FT/MIN`, color: L.fpm < 300 ? '#7ee08f' : '#ffbf3c', sub: L.place ? `${Math.abs(L.place.across).toFixed(1)} m off centre · ${L.bounces} bounce${L.bounces === 1 ? '' : 's'}` : 'on the water', until: ms.t + 3 };
       }
     }
     if (ms.status !== 'flying') break;
@@ -185,18 +185,19 @@ function flyFrame(dt) {
     sound.event(done.kind === 'ring' ? 'ring' : 'success');
     const next = currentObjective(ms);
     // a ring gets a small toast up top, so the big banner never hides the next ring
-    if (done.kind === 'ring') game.toast = { text: ringClearedText(ms, done), until: game.t + 2 };
-    else game.banner = { text: 'OBJECTIVE DONE', color: '#7ee08f', sub: next ? next.label(ms) : 'Mission complete', until: game.t + 3 };
+    if (done.kind === 'ring') game.toast = { text: ringClearedText(ms, done), until: ms.t + 2 };
+    else game.banner = { text: 'OBJECTIVE DONE', color: '#7ee08f', sub: next ? next.label(ms) : 'Mission complete', until: ms.t + 3 };
   }
   if (ms.radio.current && ms.radio.current !== game.lastRadio) { game.lastRadio = ms.radio.current; sound.event('radio'); }
   if (ms.extra.flashAt && ms.extra.flashAt !== game.lastFlash) { game.lastFlash = ms.extra.flashAt; sound.event('thunder'); }
   if (ms.status !== 'flying') {
-    if (!game.endAt) {
-      game.endAt = game.t + (ms.status === 'done' ? 3 : 3.5);
+    // the mission clock stops with the sortie: the end banner holds for a countdown instead
+    if (game.endIn === null) {
+      game.endIn = ms.status === 'done' ? 3 : 3.5;
       game.banner = ms.status === 'done'
-        ? { text: 'MISSION COMPLETE', color: '#7ee08f', sub: ms.def.title, until: game.endAt }
-        : { text: ms.ac.crashed ? 'CRASHED' : 'MISSION FAILED', color: '#ff6b5a', sub: ms.failReason, until: game.endAt };
-    } else if (game.t > game.endAt) endFlight();
+        ? { text: 'MISSION COMPLETE', color: '#7ee08f', sub: ms.def.title, until: Infinity }
+        : { text: ms.ac.crashed ? 'CRASHED' : 'MISSION FAILED', color: '#ff6b5a', sub: ms.failReason, until: Infinity };
+    } else if ((game.endIn -= dt) <= 0) endFlight();
   }
   sound.update(ac, false);
 }
@@ -216,29 +217,31 @@ function renderFlight(ms, dt, opts = {}) {
   model.visible = true;
   model.position.set(ac.pos.x, ac.pos.y, ac.pos.z);
   model.quaternion.set(ac.q.x, ac.q.y, ac.q.z, ac.q.w);
-  animateSeaplane(model, ac, opts.t ?? game.t, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit', night: w.time.windows > 0.6 });
+  // one clock for the frame: the mission's own, or the frozen shot time
+  const clock = opts.t ?? ms.t;
+  animateSeaplane(model, ac, clock, { dt, lightsOn: true, landingLight: opts.landingLight ?? game.landingLight, cockpit: game.view === 'cockpit', night: w.time.windows > 0.6 });
   const wind = ms.env.wind.at(ac.pos, ac.t);
   const wl = Math.hypot(wind.x, wind.z) || 1;
-  w.markers.update(ms, game.t, { x: wind.x / wl * 0.4, z: wind.z / wl * 0.4 });
-  w.props.userData.lighthouse.userData.tick(game.t, lighthouseOn(ms));
-  w.props.userData.smoke.userData.tick(game.t, wind.x / wl, wind.z / wl);
-  w.water.userData.tick(game.t);
+  w.markers.update(ms, clock, { x: wind.x / wl * 0.4, z: wind.z / wl * 0.4 });
+  w.props.userData.lighthouse.userData.tick(clock, lighthouseOn(ms));
+  w.props.userData.smoke.userData.tick(clock, wind.x / wl, wind.z / wl);
+  w.water.userData.tick(clock);
   rig.mode = game.view;
   rig.look = input.look;
   rig.update(ac, dt, opts.camera ?? {});
-  w.effects.update(dt, game.t, camera, ac, ms.extra.flashAt);
+  w.effects.update(dt, clock, camera, ac, ms.extra.flashAt);
   renderer.render(w.scene, camera);
   const W = window.innerWidth;
   const H = window.innerHeight;
   hud.clearRect(0, 0, W, H);
   const panel = drawInstrumentPanel(hud, W, H, ac, game.view, { autopilot: !!game.autopilot, bug: objectiveBearing(ms) });
-  const banner = game.banner && game.t < game.banner.until ? game.banner : null;
+  const banner = game.banner && clock < game.banner.until ? game.banner : null;
   drawFlightHud(hud, W, H, ms, {
     missionNo: ms.def.order, missionCount: MISSIONS.length, view: game.view,
     live: scoreSortie(ms, game.career.score.combo), nextMult: nextMultiplier(game.career.score.combo),
     debtFrac: 1 - debtLeft(game.career) / DEBT,
     panelTop: panel.top, banner, radio: ms.radio.current,
-    toast: game.toast && game.t < game.toast.until ? game.toast.text : null,
+    toast: game.toast && clock < game.toast.until ? game.toast.text : null,
     rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,
     project: (x, y, z) => {
       const v = new THREE.Vector3(x, y, z).project(camera);

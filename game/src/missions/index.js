@@ -1,4 +1,4 @@
-// The career's mission board: ten sorties, each its own file, in career order.
+// The career's mission board: every sortie, each its own file, in career order.
 
 import mailRun from './mailRun.js';
 import ringCourse from './ringCourse.js';

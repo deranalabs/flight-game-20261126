@@ -10,16 +10,24 @@ import { enduranceMinutes } from '../systems/fuelTank.js';
 import { condition } from '../systems/damageModel.js';
 import { groundHeight } from '../terrain/heightmap.js';
 import { WORLD_HALF, RUNWAYS, VILLAGES, LANDMARKS, ISLANDS } from '../terrain/islandLayout.js';
-import { fmtTime, currentObjective } from '../missions/missionRunner.js';
+import { fmtTime, currentObjective, ringsOf } from '../missions/missionRunner.js';
 import { bearingTo } from '../flight/autopilot.js';
-import { currentApproach, papiWhite } from '../flight/glidepath.js';
+import { currentApproach, papiLights, slopeWord, ON_SLOPE_DEG } from '../flight/glidepath.js';
 
+// HUD colour tokens, declared once: every colour below comes from here
 const FONT = '"Trebuchet MS", "Segoe UI", Arial, sans-serif';
 const INK = '#f4f7ef';
 const AMBER = '#ffb347';
 const CYAN = '#5fe3ff';
 const BG = 'rgba(30,16,24,0.62)'; // warm dusk, as the screens
 const CORAL = '#ff7a59';
+const GOOD = '#9ff0a8';
+const OK = '#7ee08f';
+const BAD = '#ff6b5a';
+const DIM = '#c9d3dc';
+const MUTED = '#9aa4ad';
+const LABEL = '#d6c3b4';
+const DARK = 'rgba(10,16,24,0.85)';
 
 function box(ctx, x, y, w, h, fill = BG, radius = 10) {
   ctx.fillStyle = fill;
@@ -127,7 +135,7 @@ function headingTape(ctx, W, ac, bug) {
     ctx.beginPath(); ctx.moveTo(px, y + h - 2); ctx.lineTo(px - 9, y + h - 16); ctx.lineTo(px + 9, y + h - 16); ctx.fill();
   }
   ctx.restore();
-  box(ctx, W / 2 - 62, y + h - 2, 124, 40, 'rgba(10,16,24,0.85)', 8);
+  box(ctx, W / 2 - 62, y + h - 2, 124, 40, DARK, 8);
   text(ctx, `HDG ${String(Math.round(ac.hdg) % 360).padStart(3, '0')}`, W / 2, y + h + 18, 24, AMBER, 'center');
 }
 
@@ -136,9 +144,9 @@ function bigReadout(ctx, x, y, label, value, unit, sub, color = INK, align = 'le
   const bx = align === 'left' ? x : x - w;
   box(ctx, bx, y, w, 96);
   text(ctx, label, bx + 14, y + 20, 18, AMBER);
-  text(ctx, unit, bx + w - 14, y + 20, 16, '#c9d3dc', 'right');
+  text(ctx, unit, bx + w - 14, y + 20, 16, DIM, 'right');
   text(ctx, value, bx + w - 14, y + 56, 44, color, 'right');
-  if (sub) text(ctx, sub, bx + w - 14, y + 84, 16, '#c9d3dc', 'right');
+  if (sub) text(ctx, sub, bx + w - 14, y + 84, 16, DIM, 'right');
 }
 
 function missionCard(ctx, ms, missionNo, missionCount) {
@@ -152,7 +160,7 @@ function missionCard(ctx, ms, missionNo, missionCount) {
   box(ctx, x, y, w, h);
   text(ctx, `MISSION ${missionNo}/${missionCount} · ${def.title.toUpperCase()}`, x + 14, y + 20, 16, AMBER);
   const done = Math.min(ms.index, ms.objectives.length);
-  text(ctx, `OBJECTIVE ${Math.min(done + 1, ms.objectives.length)} OF ${ms.objectives.length}`, x + 14, y + 46, 15, '#c9d3dc');
+  text(ctx, `OBJECTIVE ${Math.min(done + 1, ms.objectives.length)} OF ${ms.objectives.length}`, x + 14, y + 46, 15, DIM);
   // progress pips
   for (let i = 0; i < ms.objectives.length; i++) {
     ctx.fillStyle = i < done ? '#2ecc71' : i === done ? AMBER : 'rgba(255,255,255,0.25)';
@@ -162,7 +170,7 @@ function missionCard(ctx, ms, missionNo, missionCount) {
   wrap(ctx, label, x + 14, y + 76, w - 28, 21, 2, INK);
   const tgt = targetOf(ms);
   const par = def.parTime;
-  text(ctx, `TIME ${fmtTime(ms.t)}  ·  PAR ${fmtTime(par)}`, x + 14, y + 128, 16, ms.t > par ? '#ff9a7a' : '#9ff0a8');
+  text(ctx, `TIME ${fmtTime(ms.t)}  ·  PAR ${fmtTime(par)}`, x + 14, y + 128, 16, ms.t > par ? '#ff9a7a' : GOOD);
   if (tgt) {
     const dist = Math.hypot(tgt.x - ac.pos.x, tgt.z - ac.pos.z) / 1000;
     const brg = Math.round(bearingTo(ac.pos.x, ac.pos.z, tgt.x, tgt.z));
@@ -255,7 +263,7 @@ function windBlock(ctx, W, ms, y) {
   const now = w.at(ac.pos, ac.t);
   const kt = Math.round(Math.hypot(now.x, now.z) * MS_TO_KT);
   text(ctx, `WIND ${String(Math.round(w.fromDeg)).padStart(3, '0')}°`, x + 64, y + 20, 17, INK);
-  text(ctx, `${kt} KT  G${w.speedKt + w.gustKt}`, x + 64, y + 44, 17, w.gustKt > 10 ? AMBER : '#c9d3dc');
+  text(ctx, `${kt} KT  G${w.speedKt + w.gustKt}`, x + 64, y + 44, 17, w.gustKt > 10 ? AMBER : DIM);
   return y + 70;
 }
 
@@ -266,15 +274,15 @@ function chips(ctx, W, ms, y) {
   const mins = enduranceMinutes(ac.fuel, ac.spec);
   const cond = condition(ac.damage);
   const rows = [
-    [`FUEL ${fuelPct}%`, Number.isFinite(mins) ? `${Math.round(mins)} MIN` : 'ENG OFF', fuelPct < 15 ? '#ff6b5a' : fuelPct < 30 ? AMBER : '#9ff0a8'],
-    [`DAMAGE ${Math.round(100 - cond.average)}%`, cond.worstHealth < 100 ? `${cond.worst.toUpperCase()} ${Math.round(cond.worstHealth)}%` : 'ALL GREEN', cond.worstHealth < 45 ? '#ff6b5a' : cond.worstHealth < 80 ? AMBER : '#9ff0a8'],
+    [`FUEL ${fuelPct}%`, Number.isFinite(mins) ? `${Math.round(mins)} MIN` : 'ENG OFF', fuelPct < 15 ? BAD : fuelPct < 30 ? AMBER : GOOD],
+    [`DAMAGE ${Math.round(100 - cond.average)}%`, cond.worstHealth < 100 ? `${cond.worst.toUpperCase()} ${Math.round(cond.worstHealth)}%` : 'ALL GREEN', cond.worstHealth < 45 ? BAD : cond.worstHealth < 80 ? AMBER : GOOD],
   ];
   const extra = ms.def.hud ? ms.def.hud(ms) : null;
-  if (extra) rows.push([extra[0], '', { good: '#9ff0a8', warn: AMBER, bad: '#ff6b5a', dim: '#9aa4ad' }[extra[1]] ?? INK]);
+  if (extra) rows.push([extra[0], '', { good: GOOD, warn: AMBER, bad: BAD, dim: MUTED }[extra[1]] ?? INK]);
   rows.forEach(([a, b, col], i) => {
     box(ctx, x, y + i * 40, 206, 34, BG, 8);
     text(ctx, a, x + 12, y + i * 40 + 17, 17, col);
-    if (b) text(ctx, b, x + 194, y + i * 40 + 17, 14, '#c9d3dc', 'right');
+    if (b) text(ctx, b, x + 194, y + i * 40 + 17, 14, DIM, 'right');
   });
   return y + rows.length * 40;
 }
@@ -299,7 +307,7 @@ function checklist(ctx, ms, x, y, bottom) {
     const i = first + k;
     const done = i < ms.index;
     const now = i === ms.index && ms.status === 'flying';
-    const col = done ? '#9ff0a8' : now ? AMBER : '#c9d3dc';
+    const col = done ? GOOD : now ? AMBER : DIM;
     const cy = y + 18 + k * 24;
     text(ctx, done ? '✓' : now ? '▶' : '○', x + 22, cy, 16, col, 'center');
     text(ctx, clip(ctx, o.label(ms), w - 54, 16), x + 40, cy, 16, col);
@@ -313,16 +321,16 @@ function scoreLine(ctx, W, ms, y, live, nextMult) {
   const x = W - 222;
   const sc = ms.score;
   const best = sc.landings.reduce((b, l) => (!b || l.points > b.points ? l : b), null);
-  const rings = ms.objectives.filter((o) => o.kind === 'ring').length;
+  const rings = ringsOf(ms).length;
   const drops = ms.objectives.filter((o) => o.kind === 'drop').length;
   let line = [`JOB PAY ${ms.def.pay} SH`, AMBER];
-  if (best) line = [`LANDING ${best.letter} · ${best.points} PTS`, '#9ff0a8'];
-  else if (rings) line = [`STREAK ${sc.ringStreak} · MISSED ${sc.ringMisses}`, sc.ringMisses ? AMBER : '#9ff0a8'];
-  else if (drops) line = [`DROPS ${sc.drops.length}/${drops} · MISSED ${sc.misses}`, sc.misses ? AMBER : '#9ff0a8'];
+  if (best) line = [`LANDING ${best.letter} · ${best.points} PTS`, GOOD];
+  else if (rings) line = [`STREAK ${sc.ringStreak} · MISSED ${sc.ringMisses}`, sc.ringMisses ? AMBER : GOOD];
+  else if (drops) line = [`DROPS ${sc.drops.length}/${drops} · MISSED ${sc.misses}`, sc.misses ? AMBER : GOOD];
   box(ctx, x, y, 206, 86);
-  text(ctx, 'SCORE', x + 12, y + 14, 13, '#d6c3b4');
+  text(ctx, 'SCORE', x + 12, y + 14, 13, LABEL);
   text(ctx, live ? live.base.toLocaleString('en-US') : '0', x + 12, y + 38, 32, INK);
-  text(ctx, 'COMBO', x + 194, y + 14, 13, '#d6c3b4', 'right');
+  text(ctx, 'COMBO', x + 194, y + 14, 13, LABEL, 'right');
   text(ctx, `×${nextMult ?? 1}`, x + 194, y + 38, 30, CYAN, 'right');
   text(ctx, line[0], x + 12, y + 68, 16, line[1]);
 }
@@ -330,16 +338,16 @@ function scoreLine(ctx, W, ms, y, live, nextMult) {
 // Where the right column has no room (the cockpit), score and combo flank the heading box.
 function scoreFlanks(ctx, W, live, nextMult) {
   box(ctx, W / 2 - 250, 60, 170, 42, BG, 8);
-  text(ctx, 'SCORE', W / 2 - 238, 81, 13, '#d6c3b4');
+  text(ctx, 'SCORE', W / 2 - 238, 81, 13, LABEL);
   text(ctx, live ? live.base.toLocaleString('en-US') : '0', W / 2 - 92, 82, 28, INK, 'right');
   box(ctx, W / 2 + 80, 60, 170, 42, BG, 8);
-  text(ctx, 'COMBO', W / 2 + 92, 81, 13, '#d6c3b4');
+  text(ctx, 'COMBO', W / 2 + 92, 81, 13, LABEL);
   text(ctx, `×${nextMult ?? 1}`, W / 2 + 238, 82, 28, CYAN, 'right');
 }
 
 /** Toast text for a cleared ring: its number and the count from the objective list. */
 export function ringClearedText(ms, o) {
-  const rings = ms.objectives.filter((x) => x.kind === 'ring');
+  const rings = ringsOf(ms);
   return `RING ${rings.indexOf(o) + 1}/${rings.length} CLEARED`;
 }
 
@@ -348,7 +356,7 @@ function toast(ctx, W, s) {
   ctx.font = `bold 22px ${FONT}`;
   const w = ctx.measureText(s).width + 36;
   box(ctx, W / 2 - w / 2, 108, w, 38, 'rgba(10,16,24,0.78)', 10);
-  text(ctx, s, W / 2, 128, 22, '#7ee08f', 'center');
+  text(ctx, s, W / 2, 128, 22, OK, 'center');
 }
 
 // Glideslope ladder on a landing approach: four PAPI lights and a scale of ±1.5° about
@@ -361,10 +369,10 @@ function approachLadder(ctx, W, ms, y, bottom) {
   const x = W - 222 - 92;
   box(ctx, x, y, 80, h);
   text(ctx, 'PAPI', x + 40, y + 16, 16, AMBER, 'center');
-  const white = papiWhite(ap.dev);
+  const lit = papiLights(ap.dev);
   for (let i = 0; i < 4; i++) {
-    // lights read left to right: the white ones are on the left, like the real bar
-    ctx.fillStyle = i < white ? '#ffffff' : '#ff3b30';
+    // lights read left to right, outer first, from the same rule as the 3D bar
+    ctx.fillStyle = lit[i] ? '#ffffff' : '#ff3b30';
     ctx.beginPath(); ctx.arc(x + 13 + i * 18, y + 36, 6.5, 0, Math.PI * 2); ctx.fill();
   }
   const top = y + 56;
@@ -378,15 +386,15 @@ function approachLadder(ctx, W, ms, y, bottom) {
   }
   // high above the path shows the diamond above the centre line
   const dy = Math.max(-1.5, Math.min(1.5, ap.dev)) * (span / 3);
-  ctx.fillStyle = Math.abs(ap.dev) < 0.4 ? '#7ee08f' : AMBER;
+  const onSlope = slopeWord(ap.dev) === 'ON';
+  ctx.fillStyle = onSlope ? OK : AMBER;
   ctx.beginPath(); ctx.moveTo(x + 40, mid - dy - 9); ctx.lineTo(x + 49, mid - dy); ctx.lineTo(x + 40, mid - dy + 9); ctx.lineTo(x + 31, mid - dy); ctx.closePath(); ctx.fill();
-  const word = ap.dev > 0.4 ? 'HIGH' : ap.dev < -0.4 ? 'LOW' : 'ON';
-  text(ctx, `${word} ${ap.angle.toFixed(1)}°`, x + 40, y + h - 16, 16, Math.abs(ap.dev) < 0.4 ? '#9ff0a8' : AMBER, 'center');
+  text(ctx, `${slopeWord(ap.dev)} ${ap.angle.toFixed(1)}°`, x + 40, y + h - 16, 16, onSlope ? GOOD : AMBER, 'center');
 }
 
 // Title strip with the wordmark and the Harbour Board debt bar: on the key-help row if it fits there, else right-aligned just
 // above it when the right column leaves room, else the title alone on the key-help row.
-function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom, debtFrac = 0) {
+function scopeStrip(ctx, W, missionCount, bottom, helpLeft, columnBottom, debtFrac = 0) {
   const left = 412;
   const title = 'TIDEWING';
   const scope = `CINDER REACH AIR SERVICE · ${missionCount} SORTIES`;
@@ -401,9 +409,9 @@ function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom, debtFra
   let w = fw;
   let x;
   let y = bottom - 40;
-  if (fw <= right - left) x = Math.max(left, Math.min(W / 2 - w / 2, right - w));
-  else if (above > rightColBottom + 10 && W - 16 - fw >= left) { x = W - 16 - fw; y = above; }
-  else { full = false; w = tw + barW + 44; x = Math.max(left, Math.min(W / 2 - w / 2, right - w)); }
+  if (fw <= helpLeft - left) x = Math.max(left, Math.min(W / 2 - w / 2, helpLeft - w));
+  else if (above > columnBottom + 10 && W - 16 - fw >= left) { x = W - 16 - fw; y = above; }
+  else { full = false; w = tw + barW + 44; x = Math.max(left, Math.min(W / 2 - w / 2, helpLeft - w)); }
   box(ctx, x, y, w, 34, 'rgba(30,16,24,0.74)', 8);
   text(ctx, title, x + 14, y + 18, 24, AMBER);
   if (full) text(ctx, `· ${scope}`, x + tw + 22, y + 18, 18, INK);
@@ -449,7 +457,7 @@ function radioBox(ctx, W, msg, bottom, left = 14) {
   const initials = msg.name.split(' ').filter((p) => p[0] && p[0] === p[0].toUpperCase() && !p.endsWith('.')).map((p) => p[0]).join('').slice(0, 2);
   text(ctx, initials, x + 30, y + 31, 17, '#101418', 'center');
   text(ctx, `${msg.name.toUpperCase()}`, x + 60, y + 20, 16, msg.color);
-  text(ctx, `${msg.role} · RADIO`, x + 60, y + 40, 13, '#9aa4ad');
+  text(ctx, `${msg.role} · RADIO`, x + 60, y + 40, 13, MUTED);
   wrap(ctx, msg.text, x + 12, y + 62, w - 24, 15, 3, INK);
 }
 
@@ -478,7 +486,7 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   const agl = Math.round(Math.max(0, ac.agl) * 3.28084);
   const fpm = Math.round((ac.vs * MS_TO_FPM) / 10) * 10;
   const ry = cardBottom + 14;
-  bigReadout(ctx, 14, ry, 'SPD', String(kt), 'KT', `GS ${Math.round(ac.gs * MS_TO_KT)} KT`, ac.stallWarn ? '#ff6b5a' : INK);
+  bigReadout(ctx, 14, ry, 'SPD', String(kt), 'KT', `GS ${Math.round(ac.gs * MS_TO_KT)} KT`, ac.stallWarn ? BAD : INK);
   bigReadout(ctx, 14, ry + 106, 'ALT', ft.toLocaleString('en-US'), 'FT', `AGL ${agl.toLocaleString('en-US')}  VS ${fpm > 0 ? '+' : ''}${fpm}`, agl < 150 && !ac.onSurface ? AMBER : INK);
   let y = miniMap(ctx, W, ms, 12);
   y = windBlock(ctx, W, ms, y + 4);

@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { MISSIONS, missionById } from '../game/src/missions/index.js';
 import { startMission, stepMission } from '../game/src/missions/missionRunner.js';
 import { ringClearedText } from '../game/src/hud/flightHud.js';
-import { approachTo, currentApproach, papiWhite, GLIDE_DEG, aimPoint, fieldElevation } from '../game/src/flight/glidepath.js';
+import { approachTo, currentApproach, papiWhite, papiLights, slopeWord, ON_SLOPE_DEG, GLIDE_DEG, aimPoint, fieldElevation } from '../game/src/flight/glidepath.js';
+import { readFileSync } from 'node:fs';
 import { RUNWAYS } from '../game/src/terrain/islandLayout.js';
 import { flyMissionWithBot } from './botPilot.mjs';
 
@@ -17,18 +18,38 @@ test('ring toast reads n/m from the objective list', () => {
   assert.equal(ringClearedText(ms, rings[5]), 'RING 6/6 CLEARED');
 });
 
-test('passing close by a ring without going through is a miss and resets the streak', () => {
+// put the aircraft `along` metres past ring o's plane and `off` metres right of its centre
+function placeAt(ms, o, along, off) {
+  const a = (o.hdg * Math.PI) / 180;
+  ms.ac.pos.x = o.x + Math.sin(a) * along + Math.cos(a) * off;
+  ms.ac.pos.y = o.y;
+  ms.ac.pos.z = o.z - Math.cos(a) * along + Math.sin(a) * off;
+}
+
+test('a ring miss is a pass through its plane outside the radius, once per pass', () => {
   const ms = startMission(missionById('ringCourse'));
   const o = ms.objectives[0];
+  ms.index = 0;
   ms.score.ringStreak = 3;
-  ms.ac.pos.x = o.x + o.r * 2; ms.ac.pos.y = o.y; ms.ac.pos.z = o.z;
-  stepMission(ms);
+  let lines = 0;
+  const say = ms.say;
+  ms.say = (evt, d) => { if (evt === 'ringMiss') lines += 1; say(evt, d); };
+  // starting close to the ring, inside the old bubble, and leaving it is no miss
+  placeAt(ms, o, -o.r * 2, o.r * 1.5); stepMission(ms);
+  placeAt(ms, o, -o.r * 8, o.r * 1.5); stepMission(ms);
   assert.equal(ms.score.ringMisses, 0);
-  ms.ac.pos.x = o.x + o.r * 8;
-  stepMission(ms);
+  // passing beside it, through the plane but outside the radius: one miss, one radio line
+  placeAt(ms, o, -o.r, o.r * 2); stepMission(ms);
+  placeAt(ms, o, o.r, o.r * 2); stepMission(ms);
+  placeAt(ms, o, o.r * 3, o.r * 2); stepMission(ms);
   assert.equal(ms.score.ringMisses, 1);
   assert.equal(ms.score.ringStreak, 0);
   assert.equal(ms.index, 0);
+  assert.equal(lines, 1);
+  // crossing the plane far from the ring is no pass at all
+  placeAt(ms, o, -o.r, o.r * 20); stepMission(ms);
+  placeAt(ms, o, o.r, o.r * 20); stepMission(ms);
+  assert.equal(ms.score.ringMisses, 1);
 });
 
 test('the bot flies every ring job with an unbroken streak', () => {
@@ -38,6 +59,19 @@ test('the bot flies every ring job with an unbroken streak', () => {
     if (!rings) continue;
     assert.equal(ms.score.bestStreak, rings, def.title);
     assert.equal(ms.score.ringMisses, 0, def.title);
+  }
+});
+
+test('one PAPI rule: the 3D bar and the HUD both light from papiLights', () => {
+  assert.deepEqual(papiLights(0), [true, true, false, false]);
+  assert.deepEqual(papiLights(2), [true, true, true, true]);
+  assert.deepEqual(papiLights(-2), [false, false, false, false]);
+  assert.equal(slopeWord(ON_SLOPE_DEG / 2), 'ON');
+  assert.equal(slopeWord(ON_SLOPE_DEG * 2), 'HIGH');
+  for (const f of ['game/src/render/missionMarkers.js', 'game/src/hud/flightHud.js']) {
+    const src = readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+    assert.ok(src.includes('papiLights('), `${f} lights from papiLights`);
+    assert.ok(!src.includes('papiWhite('), `${f} keeps no second rule`);
   }
 });
 
@@ -61,7 +95,7 @@ test('the autopilot flies down the same glideslope the PAPI shows', () => {
   for (let i = 0; i < 60 * 1500 && ms.status === 'flying'; i++) {
     stepMission(ms, {}, { bot: true });
     const ap = currentApproach(ms);
-    if (ap && ap.toAim > 400 && ap.toAim < 1500 && ms.ap.flare === false) devs.push(ap.dev);
+    if (ap && ap.beforeAim > 400 && ap.beforeAim < 1500 && ms.ap.flare === false) devs.push(ap.dev);
   }
   assert.equal(ms.status, 'done');
   assert.ok(devs.length > 60, 'saw the final approach');

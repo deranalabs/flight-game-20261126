@@ -5,7 +5,6 @@
 //   cover   - Cinder Ring Trial at dusk, chase view, about to fly ring 8 with the runway beyond
 //   cockpit - Tallow Ridge Fire, cockpit view, low run-in on a burning slope, live score and combo
 //   debrief - the debrief after the bot's sortie 4 (Ridge strip), grade, lines and flight chart
-//   night   - Gannet Point Lantern, chase view, the cove flare gate at night
 //   mail    - Morning Mail Run, chase view, short final onto the Saltmoor water lane
 //   hangar  - the hangar screens after the autopilot has flown the first seven sorties
 
@@ -42,6 +41,9 @@ function flyCareer(n) {
   return { career, last };
 }
 
+// the low chase camera shared by the cover and the mail shot
+const LOW_CHASE = { distance: 21, height: 5, side: -6, lookAhead: 40, fov: 64 };
+
 const distTo = (ms, x, z) => Math.hypot(ms.ac.pos.x - x, ms.ac.pos.z - z);
 
 export const SHOTS = {
@@ -56,7 +58,7 @@ export const SHOTS = {
     // the same moment at dusk, the sunset sky behind the volcano
     ms.def = { ...ms.def, timeOfDay: 'dusk' };
     // t: frozen between two flashes of the fin strobe, which shows from dusk on
-    return { ms, career: flyCareer(1).career, view: 'chase', t: 0.6, camera: { distance: 21, height: 5, side: -6, lookAhead: 40, lookDown: -10, fov: 64 } };
+    return { ms, career: flyCareer(1).career, view: 'chase', t: 0.6, camera: { ...LOW_CHASE, lookDown: -10 } };
   },
   cockpit() {
     const ms = startMission(missionById('waterBomber'), {}, 1);
@@ -76,7 +78,7 @@ export const SHOTS = {
       const o = currentObjective(m);
       return m.index === 3 && o && o.bot && o.bot.phase === 'final' && distTo(m, o.rw.x, o.rw.z) < 1300;
     });
-    return { ms, view: 'chase', camera: { distance: 21, height: 5, side: -6, lookAhead: 40, lookDown: -9, fov: 64 } };
+    return { ms, view: 'chase', camera: { ...LOW_CHASE, lookDown: -9 } };
   },
   night() {
     const ms = startMission(missionById('lighthouseNight'), {}, 1);

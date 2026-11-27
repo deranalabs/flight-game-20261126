@@ -45,7 +45,7 @@ export function startMission(def, career = {}, seed = 1) {
     steps: 0,
     trace: [], // [ft, kt] once a second, for the debrief chart
     ringNo(o) {
-      const rings = ms.objectives.filter((x) => x.kind === 'ring');
+      const rings = ringsOf(ms);
       return `${rings.indexOf(o) + 1} of ${rings.length}`;
     },
     say(evt, data = {}) { ms.radio.say(evt, data, ms.t); },
@@ -73,6 +73,11 @@ export function startMission(def, career = {}, seed = 1) {
   if (def.setup) def.setup(ms);
   for (const [who, text] of def.radio?.start ?? []) ms.radio.line(who, text, 0);
   return ms;
+}
+
+/** The mission's ring objectives in course order. */
+export function ringsOf(ms) {
+  return ms.objectives.filter((o) => o.kind === 'ring');
 }
 
 export function currentObjective(ms) {
@@ -112,7 +117,8 @@ export function stepMission(ms, actions = {}, opts = {}) {
   if (cleared) {
     obj.doneAt = ms.t;
     ms.index += 1;
-    const lines = ms.def.radio?.[`obj${ms.index}`];
+    // radio after an objective: by its name (after: { 'West buoy': ... }) or by its number
+    const lines = ms.def.radio?.after?.[obj.name] ?? ms.def.radio?.[`obj${ms.index}`];
     if (lines) for (const [who, text] of lines) ms.radio.line(who, text, ms.t);
     if (ms.def.onObjective) ms.def.onObjective(ms, ms.index, obj);
     if (ms.index >= ms.objectives.length && ms.status === 'flying') {
@@ -131,8 +137,11 @@ export function stepMission(ms, actions = {}, opts = {}) {
   return ms;
 }
 
-// Rings flown in a row: a clear adds one; coming within four radii of the ring and
-// leaving again without going through is a miss and resets the streak.
+// Rings flown in a row: a clear adds one. A miss is passing through the ring's plane
+// outside its radius (but within six radii of the centre, so a far-off crossing is not a
+// pass): once per crossing, one radio line, and the streak resets. Where the aircraft
+// starts is only remembered, never counted.
+export const RING_MISS_REACH = 6;
 function ringStreak(ms, o, cleared) {
   const sc = ms.score;
   if (cleared) {
@@ -141,14 +150,19 @@ function ringStreak(ms, o, cleared) {
     return;
   }
   const p = ms.ac.pos;
-  const near = Math.hypot(p.x - o.x, p.y - o.y, p.z - o.z) < o.r * 4;
-  if (near) o.wasNear = true;
-  else if (o.wasNear) {
-    o.wasNear = false;
-    sc.ringMisses += 1;
-    sc.ringStreak = 0;
-    ms.say('ringMiss', { name: o.name ?? 'the ring' });
-  }
+  const a = (o.hdg * Math.PI) / 180;
+  const dx = p.x - o.x;
+  const dy = p.y - o.y;
+  const dz = p.z - o.z;
+  const side = Math.sign(dx * Math.sin(a) - dz * Math.cos(a)) || 1; // ahead of or behind the plane
+  const crossed = o.side !== undefined && side !== o.side;
+  o.side = side;
+  if (!crossed) return;
+  const off = Math.hypot(dx * Math.cos(a) + dz * Math.sin(a), dy); // distance from centre in the plane
+  if (off <= o.r || off > o.r * RING_MISS_REACH) return;
+  sc.ringMisses += 1;
+  sc.ringStreak = 0;
+  ms.say('ringMiss', { name: o.name ?? 'the ring' });
 }
 
 function warnings(ms) {

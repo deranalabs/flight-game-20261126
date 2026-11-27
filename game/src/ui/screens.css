@@ -54,7 +54,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { text-align: left; color: var(--dim); font-weight: 700; font-size: 12.5px; padding: 3px 4px; border-bottom: 1px solid var(--edge); }
 td { padding: 4px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
-/* ten sorties: the logbook card holds the last five flights and ten rating rows */
+/* the logbook card holds the last five flights and one rating row per sortie */
 .card.log { gap: 5px; }
 .card.log td { padding: 2px 4px; font-size: 13.5px; }
 td.g { color: var(--good); } td.r { color: var(--bad); } td.a { color: var(--amber); }

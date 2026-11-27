@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { glowSprite } from './glowSprite.js';
 import { groundHeight } from '../terrain/heightmap.js';
-import { currentApproach, aimPoint, fieldElevation, papiWhite, GLIDE_DEG } from '../flight/glidepath.js';
+import { currentApproach, aimPoint, fieldElevation, papiLights, GLIDE_DEG } from '../flight/glidepath.js';
 
 function numberTexture(text, color) {
   const cv = document.createElement('canvas');
@@ -145,13 +145,14 @@ function buildApproach(rw, hdg) {
   const a = (hdg * Math.PI) / 180;
   const fx = Math.sin(a);
   const fz = -Math.cos(a);
-  const toAim = -rw.length / 2 + aimPoint(rw);
-  g.position.set(rw.x + fx * toAim, fieldElevation(rw), rw.z + fz * toAim);
+  const aimOffset = -rw.length / 2 + aimPoint(rw); // runway centre to aim point, along the landing
+  g.position.set(rw.x + fx * aimOffset, fieldElevation(rw), rw.z + fz * aimOffset);
   g.rotation.y = -a;
   const lights = [];
   for (let i = 0; i < 4; i++) {
+    // lights[0] is the outer light, furthest left of the runway, as papiLights orders them
     const s = glowSprite(0xff3020, 26);
-    s.position.set(-(rw.width / 2 + 16 + i * 10), 2, 0);
+    s.position.set(-(rw.width / 2 + 46 - i * 10), 2, 0);
     lights.push(s);
     g.add(s);
   }
@@ -240,11 +241,10 @@ export function makeMarkerLayer(scene, night) {
       let g = approaches.get(key);
       if (!g) { g = buildApproach(ap.rw, ap.hdg); approaches.set(key, g); group.add(g); }
       g.visible = true;
-      const white = papiWhite(ap.dev);
-      // the outer lights turn white first, as on a real bar: two white, two red on slope
-      g.userData.lights.forEach((l, i) => l.material.color.setHex(i >= 4 - white ? 0xffffff : 0xff3020));
+      const lit = papiLights(ap.dev);
+      g.userData.lights.forEach((l, i) => l.material.color.setHex(lit[i] ? 0xffffff : 0xff3020));
       // rungs ahead of the aircraft only, and none in the last 250 m in front of it
-      for (const r of g.userData.rungs) r.visible = r.userData.d < ap.toAim - 250;
+      for (const r of g.userData.rungs) r.visible = r.userData.d < ap.beforeAim - 250;
     }
 
     // loose loads: sacks and water

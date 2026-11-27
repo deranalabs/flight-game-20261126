@@ -101,7 +101,12 @@ export function takeoff(label = 'Take off', hdg = null) {
  * Fly through a ring at (x, y, z) radius r; hdg is the way the ring faces. With lineUp
  * the bot swings out behind it and flies through straight along its facing.
  */
-export function ring(x, y, z, r, hdg, name, lineUp = false) {
+// how far the bot leads its turn onto a weaving ring (a share of the heading error, within
+// RING_LEAD_RANGE m), so a slalom line converges on the centre instead of chasing it round
+const RING_LEAD = 0.8;
+const RING_LEAD_RANGE = 900;
+
+export function ring(x, y, z, r, hdg, name, lineUp = false, weave = false) {
   return {
     kind: 'ring', x, y, z, r, hdg, name,
     label(ms) { return `Fly through ring ${ms.ringNo(this)}${name ? ` · ${name}` : ''}`; },
@@ -123,7 +128,9 @@ export function ring(x, y, z, r, hdg, name, lineUp = false) {
       if (!lineUp) {
         // any ring is cleared by flying through its centre, from whatever side
         const alt = Math.max(safeAltitude(ac.pos.x, ac.pos.z, x, z, y, d < 600 ? 60 : 90), d < 700 ? 0 : clearAhead(ac, y));
-        flyTo(ac, ms.ap, x, z, alt, 44, dt, d < 500 ? 20 : 32);
+        const brg = bearingTo(ac.pos.x, ac.pos.z, x, z);
+        const lead = weave && d < RING_LEAD_RANGE ? Math.max(-30, Math.min(30, wrap180(brg - ac.hdg) * RING_LEAD)) : 0;
+        flyHeading(ac, ms.ap, brg + lead, alt, 44, dt, d < 250 ? 20 : 34);
         return;
       }
       if (!st.phase) {

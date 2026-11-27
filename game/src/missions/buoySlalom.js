@@ -39,7 +39,7 @@ export default {
   parTime: 480,
   missAllowance: 0,
   build(ms, k) {
-    const rings = BUOYS.map(([x, z, y, name], i) => k.ring(x, y, z, 36, facing(i), name));
+    const rings = BUOYS.map(([x, z, y, name], i) => k.ring(x, y, z, 36, facing(i), name, false, true));
     return [
       k.takeoff('Take off from Port Halyard, runway 18'),
       ...rings,
@@ -54,12 +54,14 @@ export default {
       ['marta', 'Regatta display, Tern. Runway one-eight, then the west buoy off the harbour.'],
       ['marta', 'Six rings, low and slow. The crowd is on the harbour wall.'],
     ],
-    obj2: [['marta', 'Through the west buoy! Red buoy next, weave left.']],
-    obj4: [['marta', 'Half the course. The crowd is on its feet.']],
-    obj7: [['marta', 'East buoy cleared! Land on the harbour lane, wind is from the east.']],
+    after: {
+      'West buoy': [['marta', 'Through the west buoy! Red buoy next, weave left.']],
+      'Green buoy': [['marta', 'Half the course. The crowd is on its feet.']],
+      'East buoy': [['marta', 'East buoy cleared! Land on the harbour lane, wind is from the east.']],
+    },
     done: [['marta', 'What a display. The regatta is buying your fuel tonight.']],
   },
-  onObjective(ms, i) {
-    if (i === 8) ms.radio.setState('marta', 'Display flown');
+  onObjective(ms, i, obj) {
+    if (obj.kind === 'land') ms.radio.setState('marta', 'Display flown');
   },
 };

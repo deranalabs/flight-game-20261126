@@ -1,6 +1,6 @@
 // Score, combo and the Harbour Board debt: grades from the four score lines, the combo
 // grows on B-or-better runs and resets on a crash, the career keeps totals and bests,
-// the Board is paid from completed sorties, and the bot's ten sorties clear the debt.
+// the Board is paid from completed sorties, and the bot's sorties clear the debt.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -58,7 +58,7 @@ test('the Board takes completed sorties only and never past the debt; chapters f
   assert.deepEqual([1, 3, 4, 7, 8, 10, 11].map((n) => chapterFor(n).no), [1, 1, 2, 2, 3, 3, 3]);
 });
 
-test('the bot flies all ten sorties for the Board and clears the debt', () => {
+test('the bot flies every sortie for the Board and clears the debt', () => {
   const c = newCareer();
   const grades = [];
   for (const def of MISSIONS) {

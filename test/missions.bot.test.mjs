@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { MISSIONS } from '../game/src/missions/index.js';
 import { flyMissionWithBot } from './botPilot.mjs';
 
-test('the board ships ten sorties', () => assert.equal(MISSIONS.length, 10));
+test('every sortie on the board has a unique id', () => assert.equal(new Set(MISSIONS.map((m) => m.id)).size, MISSIONS.length));
 
 for (const def of MISSIONS) {
   test(`bot completes mission ${def.order}: ${def.title}`, () => {
