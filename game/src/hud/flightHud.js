@@ -317,7 +317,7 @@ function scoreLine(ctx, W, ms, y) {
 function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom) {
   const left = 412;
   const title = 'TIDEWING';
-  const scope = `${missionCount} MISSIONS · FUEL · DAMAGE · HANGAR`;
+  const scope = `${missionCount} SORTIES · FUEL · DAMAGE · HANGAR`;
   ctx.font = `bold 24px ${FONT}`;
   const tw = ctx.measureText(title).width;
   ctx.font = `bold 20px ${FONT}`;

@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { MISSIONS } from '../game/src/missions/index.js';
 import { flyMissionWithBot } from './botPilot.mjs';
 
+test('the board ships ten sorties', () => assert.equal(MISSIONS.length, 10));
+
 for (const def of MISSIONS) {
   test(`bot completes mission ${def.order}: ${def.title}`, () => {
     const { ms, result, log } = flyMissionWithBot(def, { maxSeconds: 1800 });

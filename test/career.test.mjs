@@ -71,3 +71,15 @@ test('save and load round-trip, and a broken store starts fresh', () => {
   assert.equal(loadCareer(broken).cash, newCareer().cash);
   saveCareer(c, broken);
 });
+
+test('the board holds ten sorties and the unlock chain reaches sortie 10', () => {
+  assert.equal(MISSIONS.length, 10);
+  assert.deepEqual(MISSIONS.map((m) => m.order), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const c = newCareer();
+  MISSIONS.forEach((m, i) => {
+    assert.equal(isUnlocked(c, i), true, `sortie ${m.order} should be open`);
+    if (i + 1 < MISSIONS.length) assert.equal(isUnlocked(c, i + 1), false);
+    recordFlight(c, flown({ id: m.id, title: m.title }), healthyAc, m.client);
+  });
+  assert.equal(totalStars(c), 30);
+});

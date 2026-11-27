@@ -72,7 +72,7 @@ export function showHangar(career, castStates, h) {
     return `<div class="up ${own ? 'own' : ''}"><div><div class="n">${esc(u.name)}</div><div class="b">${esc(u.blurb)}</div></div>
       ${own ? '' : `<button data-buy="${u.id}" ${career.cash < u.cost ? 'disabled' : ''}>${u.cost} sh</button>`}</div>`;
   }).join('');
-  const log = career.logbook.slice(0, 7).map((e) => `<tr><td>#${e.n}</td><td>${esc(e.title)}</td>
+  const log = career.logbook.slice(0, 5).map((e) => `<tr><td>#${e.n}</td><td>${esc(e.title)}</td>
       <td class="${e.done ? 'a' : 'r'}">${e.done ? '★'.repeat(e.stars) : 'FAIL'}</td><td>${fmtTime(e.time)}</td>
       <td class="${e.landing === 'A' ? 'g' : ''}">${esc(e.landing)}</td><td class="g">+${e.pay}</td></tr>`).join('')
     || '<tr><td colspan="6" style="color:#b7c0c8">No flights yet. Your first job is on the board.</td></tr>';
@@ -99,7 +99,7 @@ export function showHangar(career, castStates, h) {
         <div class="row" style="justify-content:space-between;align-items:center"><span style="color:#b7c0c8;font-size:14px">Fuel ${FUEL_PRICE} sh/L, billed after each flight</span>
         <button data-repair="all" ${total <= 0 || career.cash < total ? 'disabled' : ''}>Repair all ${total} sh</button></div>
         <h2 style="margin-top:4px">UPGRADES</h2>${ups}</div>
-      <div class="card"><h2>PILOT'S LOGBOOK <span>${career.flights} flights · ${career.hours.toFixed(1)} h</span></h2>
+      <div class="card log"><h2>PILOT'S LOGBOOK <span>${career.flights} flights · ${career.hours.toFixed(1)} h</span></h2>
         <table><tr><th>#</th><th>Mission</th><th>Result</th><th>Time</th><th>Land</th><th>Pay</th></tr>${log}</table>
         <h2 style="margin-top:6px">RATINGS</h2>
         <table>${MISSIONS.map((m) => { const r = career.missions[m.id]; return `<tr><td>${m.order}. ${esc(m.title)}</td><td class="a">${r ? '★'.repeat(r.stars) || '-' : '-'}</td><td>${r && r.bestTime ? fmtTime(r.bestTime) : '--'}</td><td class="${r && r.bestLanding === 'A' ? 'g' : ''}">${r ? esc(r.bestLanding) : '-'}</td></tr>`; }).join('')}</table>

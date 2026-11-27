@@ -31,7 +31,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1218; col
 .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 14px; padding: 12px 14px; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
 .card h2 { margin: 0; font-size: 20px; letter-spacing: 1.5px; color: var(--amber); display: flex; justify-content: space-between; align-items: baseline; }
 .card h2 span { font-size: 14px; color: var(--dim); letter-spacing: 0; }
-.mission { display: grid; grid-template-columns: 34px 1fr auto; gap: 0 10px; align-items: center; padding: 3px 8px; border-radius: 10px; background: rgba(255,255,255,0.05); cursor: pointer; border: 1px solid transparent; }
+.mission { display: grid; grid-template-columns: 34px 1fr auto; gap: 0 10px; align-items: center; padding: 2px 8px; border-radius: 10px; background: rgba(255,255,255,0.05); cursor: pointer; border: 1px solid transparent; }
 .mission:hover, .mission.sel { border-color: var(--amber); background: rgba(255,191,60,0.12); }
 .mission.locked { opacity: 0.45; cursor: default; }
 .mission .no { grid-row: span 2; font-size: 24px; font-weight: 900; color: var(--amber); text-align: center; }
@@ -45,13 +45,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1218; col
 button { font-family: inherit; font-weight: 800; font-size: 15px; color: #101418; background: var(--amber); border: 0; border-radius: 9px; padding: 7px 12px; cursor: pointer; }
 button.ghost { background: rgba(255,255,255,0.12); color: var(--ink); }
 button:disabled { opacity: 0.4; cursor: default; }
-.up { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 5px 8px; border-radius: 9px; background: rgba(255,255,255,0.05); }
+.up { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 2px 8px; border-radius: 9px; background: rgba(255,255,255,0.05); }
 .up .n { font-weight: 800; font-size: 15px; }
 .up .b { font-size: 12.5px; color: var(--dim); }
 .up.own .n::after { content: '  FITTED'; color: var(--good); font-size: 12px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { text-align: left; color: var(--dim); font-weight: 700; font-size: 12.5px; padding: 3px 4px; border-bottom: 1px solid var(--edge); }
 td { padding: 4px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
+/* ten sorties: the logbook card holds the last five flights and ten rating rows */
+.card.log { gap: 5px; }
+.card.log td { padding: 2px 4px; font-size: 13.5px; }
 td.g { color: var(--good); } td.r { color: var(--bad); } td.a { color: var(--amber); }
 .cast { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
 .person { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 8px 10px; display: flex; gap: 9px; align-items: center; }
