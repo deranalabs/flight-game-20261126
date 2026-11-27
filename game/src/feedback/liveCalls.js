@@ -22,6 +22,8 @@ const MINIMUMS_FT = 300;
 /** Distance (m) to a fire, closing with water aboard, where the drop cue shows; and drop now. */
 const DROP_CUE_M = 450;
 const DROP_NOW_M = 120;
+/** Fuel share of the tank under which the bingo call shows. */
+const BINGO_FRAC = 0.15;
 
 /** The counters the feats read, kept on the mission. */
 export function newCallStats() {
@@ -101,6 +103,8 @@ export function callsFor(ms, ap) {
     const ball = slip < SLIP_CENTRED ? 'SLIP CENTERED' : `SLIP ${slip.toFixed(0)}° · RUDDER ${ac.beta > 0 ? 'RIGHT' : 'LEFT'}`;
     out.push({ text: `${slip < SLIP_CENTRED ? 'CLEAN TURN' : 'TURNING'} · ${Math.round(bank)}° BANK · ${ball}`, tone: slip < SLIP_CENTRED ? 'good' : 'warn' });
   }
+  const fuel = ac.fuel.litres / ac.fuel.capacity;
+  if (fuel < BINGO_FRAC) out.push({ text: `BINGO FUEL · ${Math.round(fuel * 100)}% · LAND AT THE NEAREST WATER`, tone: 'warn' });
   if (ms.score.ringStreak >= 2) out.push({ text: `ON RAILS x${ms.score.ringStreak}`, tone: 'good' });
   if (st.flashText && ms.t < st.flashUntil) out.push({ text: st.flashText, tone: 'good' });
   return out;

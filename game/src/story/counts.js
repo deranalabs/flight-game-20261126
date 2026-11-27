@@ -25,3 +25,9 @@ export function scopeLine(missions) {
   const n = shipCounts(missions);
   return `${n.sorties} SORTIES · ${n.missionTypes} MISSION TYPES · ${n.feats} FEATS · ${n.refits} REFITS`;
 }
+
+/** The README's counts line, written by tools/readmeCounts.mjs. */
+export function readmeCountsLine(missions) {
+  const n = shipCounts(missions);
+  return `**${scopeLine(missions)}** · ${n.chapters} chapters · ${n.islands} islands`;
+}

@@ -1,6 +1,6 @@
 [
   { "name": "1-dusk-ring-trial-cover.jpg", "query": "?shot=cover&seed=1" },
-  { "name": "2-fire-run-cockpit-score.jpg", "query": "?shot=cockpit&seed=1" },
-  { "name": "3-debrief-flight-chart.jpg", "query": "?shot=debrief&seed=1" },
-  { "name": "4-mission-board-harbour-note.jpg", "query": "?shot=hangar&seed=1" }
+  { "name": "2-fire-drop-zone.jpg", "query": "?shot=fire&seed=1" },
+  { "name": "3-medevac-minimums.jpg", "query": "?shot=final&seed=1" },
+  { "name": "4-harbour-board-receipt.jpg", "query": "?shot=receipt&seed=1" }
 ]

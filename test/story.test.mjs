@@ -5,7 +5,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MISSIONS } from '../game/src/missions/index.js';
-import { shipCounts, scopeLine } from '../game/src/story/counts.js';
+import { shipCounts, scopeLine, readmeCountsLine } from '../game/src/story/counts.js';
+import { readFileSync } from 'node:fs';
 import { CHAPTERS, CONTRACTS, MISSION_TYPES, chapterBounds, chapterOf, endingFor, CHOICE, DEBT, SQUEEZE_FEE, EXTENSION_LIMIT } from '../game/src/story/storyline.js';
 import { GAZETTEER } from '../game/src/world/gazetteer.js';
 import { PEOPLE, personState } from '../game/src/world/cast.js';
@@ -29,6 +30,8 @@ test('counts come from the data: sorties, four mission types, feats and refits',
   assert.equal(n.chapters, 4);
   assert.ok(n.islands >= 6);
   assert.equal(scopeLine(MISSIONS), `${n.sorties} SORTIES · ${n.missionTypes} MISSION TYPES · ${n.feats} FEATS · ${n.refits} REFITS`);
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  assert.ok(readme.includes(readmeCountsLine(MISSIONS)), 'README counts match the data: run node tools/readmeCounts.mjs');
 });
 
 test('every sortie has a contract, a chapter, and the chapters run 1 to 4 in order', () => {
@@ -139,6 +142,11 @@ test('live calls: a clean banked turn, the streak, and a held speed band award',
   assert.equal(ms.calls.bandAwards, 1);
   const ap = { dev: 0.1, word: 'ON', white: 2 };
   ms.ac.agl = 50;
-  assert.match(callsFor(ms, ap)[0].text, /2 WHITE · ON SLOPE · MINIMUMS/);
+  const final = callsFor(ms, ap);
+  assert.equal(final[0].text, 'MINIMUMS · LAND');
+  assert.ok(final[0].big);
+  assert.match(final[1].text, /FLAPS \d+ · 2 WHITE · ON SLOPE/);
+  ms.ac.fuel.litres = ms.ac.fuel.capacity * 0.1;
+  assert.ok(callsFor(ms, null).some((c) => c.text.startsWith('BINGO FUEL · 10%')));
   stepMission(ms);
 });

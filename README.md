@@ -2,23 +2,42 @@
 [![rank](https://make.fun/badge/best-flight-game-20261126-0057/deranalabs/flight-game-20261126/rank.svg)](https://make.fun/bounty/best-flight-game-20261126-0057/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
 [![reward](https://make.fun/badge/best-flight-game-20261126-0057/deranalabs/flight-game-20261126/reward.svg)](https://make.fun/bounty/best-flight-game-20261126-0057?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
 
-# Tidewing: Cinder Reach Air Service
+# Tidewing: Port Halyard Air Service
 
-A bush floatplane flight game in the browser. You fly the Tern Mk II, an amphibious high-wing floatplane, for the islands of the Cinder Reach: a volcano, a ridge island, fishing villages, a lighthouse point and a far skerry, with a runway, a dirt strip on a ridge and marked water lanes.
+A floatplane pilot owes the Port Halyard Board 12,000 sh and flies contracts across the Cinder Reach to clear it before the season closes.
 
-Ten sorties, one file each under `game/src/missions/`: a mail drop run, a ring trial around the volcano, a medevac with soft-landing limits and a patient who feels every bump, a 380 m ridge strip, water bombing three spreading fires from a lagoon scoop run, a night lighthouse run through flare gates, a squall-line crossing on low fuel with an optional fuel stop, a dead-stick glide after the engine chokes on volcanic ash, a harbour board photo survey over the observatory, dock and fuel barge, and a low buoy slalom off Halyard Harbour.
+<!-- counts: written by `node tools/readmeCounts.mjs` from the game's own data; a test checks them -->
+**10 SORTIES · 4 MISSION TYPES · 25 FEATS · 12 REFITS** · 4 chapters · 6 islands
+<!-- /counts -->
 
-The flight model (`game/src/flight/flightModel.js`) has lift with a stall and wing drop, induced and parasite drag, flaps, thrust that fades with speed, control authority that grows with airspeed and prop wash, wind with gusts, storm downdrafts and rotor off the volcano, float and wheel contact with water, runways and strips, bounces, and touchdowns graded by sink rate, centreline and bounces. Crashes say what happened. Fuel burns by throttle, the engine heats and can be hurt, and damage to the engine, airframe, floats and controls changes the handling.
+A bush floatplane flight game in the browser, built on three.js. You fly the Tern Mk II, an amphibious high-wing floatplane, over the islands of the Cinder Reach: a volcano, a ridge island, fishing harbours, a lighthouse point and a far skerry, with a runway, a ridge strip and marked water lanes.
 
-Every sortie is scored out of 1000 from four lines: objectives cleared, the touchdown (sink rate, centreline, bounces), time against par and fuel left, and graded A to F. A run of sorties graded B or better builds a combo multiplier (×1.5, ×2, up to ×3); a crash or a grade below B resets it. Score and combo show live in the HUD. After every sortie a debrief shows the grade, the score lines, the combo, a chart of altitude and airspeed over the flight and one line on what to improve; Enter goes back to the hangar.
+## What ships
 
-The story: the air service owes the Harbour Board 12,000 shillings, and the Board credits one shilling per score point of every completed sortie. The note shows as a debt bar on the title, the hangar and board, the debrief and the in-flight title strip, across three chapters (sorties 1-3, 4-7, 8-10), with a short ending when it is paid. The look is warm dusk throughout, with the wordmark "TIDEWING · CINDER REACH AIR SERVICE" and an amber sun on the Tern's fin.
+- **Mission types, each with its own HUD panel.** Ring courses (a ring counter and streak), fire and drop runs (a drop meter, a DROP ZONE cue, fires out n/m), precision landings (a sink meter, PAPI lights, a glideslope ladder and MINIMUMS callouts), and cargo and survey hauls (the load and stops). The sorties live one per file under `game/src/missions/`.
+- **The Harbour Board story** (`game/src/story/storyline.js`). Its chapters are laid over the real sortie count: THE NOTE, THE WORK, THE SQUEEZE and THE RECKONING. Each sortie is a contract for a named person on a named island. A chapter plate opens every sortie, and the clerk's notice is read on the radio. In chapter 3 the Board raises its fee, and one contract makes you choose between the Board's charter and the clinic's spare parts; the choice changes the debt. The last sortie stamps one of three endings on the final receipt: PAID, PART-PAID with an extension, or UNPAID with a lien on the Tern.
+- **The ledger** (`game/src/hangar/harbourDebt.js`). Every completed sortie pays one shilling per score point. Events add a bonus, and refits and the fee are charged. Every entry is kept.
+- **Score, combo and debrief.** A sortie is scored out of 1000 from four parts: objectives, touchdown, time against par and fuel left. It is graded A to F. B-or-better runs build a combo of up to ×3. The debrief is a stamped receipt. It shows the grade, the score lines, a four-strip flight recorder (altitude, speed, fuel, load factor on one time axis, with the touchdown marked), one tip, the feats earned and three refit cards.
+- **Feats and refits.** Feats carry medals and counters (`game/src/hangar/feats.js`), and refits change the numbers the flight model flies (`game/src/hangar/refits.js`, `game/src/aircraft/ternSpec.js`).
+- **Live calls** (`game/src/feedback/liveCalls.js`). These answer the flying as it happens: CLEAN TURN · 37° BANK · SLIP CENTERED, ON RAILS x8, FLAPS 40 · 2 WHITE · ON SLOPE, MINIMUMS · LAND, DROP ZONE 330 M, speed band awards and BINGO FUEL.
+- **A living world.** The gazetteer (`game/src/world/gazetteer.js`) lists each island's harbour, trade, landmark, custom and history. The people (`game/src/world/cast.js`) have moods and wants that change with the chapter. Events (`game/src/world/events.js`) include a squall front, an ash plume, regatta day and a ferry strike. Around the aircraft, fishing boats work the lanes, the ferry keeps its timetable, gulls wheel off the coast, windsocks swing with the real wind, quay lamps light at dusk, and the volcano smokes harder as the chapters turn.
+- **Flight model** (`game/src/flight/flightModel.js`). It covers lift with a stall and wing drop, drag, flaps, prop thrust, wind with gusts, rotor and downdrafts, float and wheel contact, bounces, graded touchdowns, fuel burn, engine heat and damage that changes the handling.
+- **Controls.** Keyboard, mouse yoke or a gamepad. The title screen sets the assist level: Easy gives auto rudder and a stall nudge, Standard flies the Tern as she is, and Expert has no hints and no autopilot. Key hints show for the first minute of a sortie. Press C to cycle the chase, cockpit and tail views.
+- **Identity** (`game/src/identity/palette.js`, `docs/identity.md`). There is one palette: basalt, sulphur, lagoon teal and ledger cream, with ember red for the debt only. The game uses one display face and one numeral face, and one panel shape from `box()`. The Board's round DUE / PAID stamp appears on the screens, and the Tern has a teal fin with a sulphur sun.
 
-Around the flights: a hangar with repairs and upgrades that cost shillings, a pilot's logbook with ratings and stars, seven radio characters with live states, and a career saved in the browser. Chase and cockpit views, a lit instrument panel (airspeed, attitude, altimeter, heading, vertical speed, RPM, fuel, cylinder temperature, levers, warning lights, damage), and sound made in code with WebAudio.
+## Play
 
-Play it with `node serve.ts` and open http://localhost:8080. Keys: W/S pitch, A/D roll, Q/E rudder, Shift/Ctrl or the wheel for throttle, F/V flaps, B brakes, Space drop, C camera, M mouse yoke, Z autopilot, R restart engine, L landing light, Esc pause.
+```bash
+node serve.ts
+```
 
-Tests: `node --test test/*.test.mjs` checks the flight model, has the autopilot fly every mission to completion, and checks score, combo and the debt (the bot's ten sorties pay off the note). Screenshots come from the game's shot mode (`?shot=cover`, `cockpit`, `debrief`, `hangar`; the bot first flies the sorties before each moment, so the scores shown are real) via `node tools/takeShots.mjs`.
+Open http://localhost:8080. Keys: W/S pitch, A/D roll, Q/E rudder, Shift/Ctrl or the wheel for throttle, F/V flaps, B brakes, Space drop, C camera, M mouse yoke, Z autopilot, R restart the engine, L landing light, Esc pause.
+
+## Tests and screenshots
+
+`node --test test/*.test.mjs` checks the flight model, the PAPI rule, the ring-miss rule, and the score and combo. It also checks the counts against the data, every story ending, the fee and the choice, the feats, the refits and the live calls. The autopilot bot flies every sortie to completion and pays off the note.
+
+The screenshots come from the game's own shot mode (`?shot=cover`, `fire`, `final`, `receipt`) through `node tools/takeShots.mjs`. The bot first flies the sorties before each moment, so the numbers in the frames are real.
 
 three.js 0.187.0 is vendored as one minified file in `game/vendor/`. Everything else is this repository's own code.
 

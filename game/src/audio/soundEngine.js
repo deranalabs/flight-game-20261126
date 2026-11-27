@@ -1,5 +1,6 @@
 // All sound is made in code with WebAudio: the radial engine's drone and its rough
-// running, rushing wind that rises with airspeed, the stall horn, rain, the radio blip,
+// running, rushing wind that rises with airspeed, the float hiss on the water, the stall
+// horn, a low-fuel chime, rain, the radio blip,
 // splashes and thumps on touchdown, the ring chime and the crash. Starts on first input.
 
 export function makeSoundEngine() {
@@ -55,7 +56,17 @@ export function makeSoundEngine() {
     const horn = ctx.createOscillator(); horn.type = 'square'; horn.frequency.value = 440;
     const hGain = ctx.createGain(); hGain.gain.value = 0;
     horn.connect(hGain); hGain.connect(master); horn.start();
-    nodes = { master, o1, o2, eFilter, eGain, wFilter, wGain, hGain, lfo };
+    // float hiss: low noise that rises while the floats run on the water
+    const fSrc = ctx.createBufferSource();
+    fSrc.buffer = noiseBuffer(ctx, 2);
+    fSrc.loop = true;
+    const fFilter = ctx.createBiquadFilter();
+    fFilter.type = 'lowpass';
+    fFilter.frequency.value = 500;
+    const fGain = ctx.createGain(); fGain.gain.value = 0;
+    fSrc.connect(fFilter); fFilter.connect(fGain); fGain.connect(master);
+    fSrc.start();
+    nodes = { master, o1, o2, eFilter, eGain, wFilter, wGain, hGain, lfo, fGain, fFilter };
   };
 
   function burst(duration, freq, gain, type = 'lowpass') {
@@ -101,6 +112,12 @@ export function makeSoundEngine() {
     nodes.wGain.gain.setTargetAtTime(Math.min(0.35, (v / 60) ** 2 * 0.3), t, 0.15);
     nodes.wFilter.frequency.setTargetAtTime(300 + v * 22, t, 0.2);
     nodes.hGain.gain.setTargetAtTime(!paused && ac.stallWarn ? 0.06 : 0, t, 0.03);
+    const onWater = !paused && ac.onSurface && ac.surfaceKind === 'water';
+    nodes.fGain.gain.setTargetAtTime(onWater ? Math.min(0.4, ac.gs / 30 * 0.4) : 0, t, 0.08);
+    nodes.fFilter.frequency.setTargetAtTime(300 + (ac.gs ?? 0) * 25, t, 0.1);
+    // low fuel: a soft double chime every eight seconds while under 15%
+    const low = !paused && ac.fuel && ac.fuel.litres / ac.fuel.capacity < 0.15;
+    if (low && t - (se.lastChime ?? -99) > 8) { se.lastChime = t; tone(990, 0.18, 0.07); tone(740, 0.25, 0.07, 'sine', 0.2); }
   };
 
   se.event = (type) => {
