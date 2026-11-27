@@ -134,9 +134,10 @@ function noteCard(ctx, note) {
   const x = 14;
   const y = 12;
   const w = 380;
-  const h = 112;
+  const h = 138;
   box(ctx, x, y, w, h, { tab: CORAL });
-  text(ctx, `PORT HALYARD BOARD · CH ${note.chapter.no} ${note.chapter.title}`, x + 14, y + 17, 14, AMBER);
+  text(ctx, `PORT HALYARD BOARD · CHAPTER ${note.chapter.no} · ${note.chapter.title}`, x + 14, y + 17, 14, AMBER);
+  text(ctx, `CLERK: ${note.chapter.plate.toUpperCase()}`, x + 14, y + 122, 16, INK, 'left', 'display');
   const left = note.left.toLocaleString('en-US');
   text(ctx, left, x + 12, y + 70, 92, note.left ? CORAL : CYAN, 'left', 'numeral');
   const lw = measure(ctx, left, 92, 'numeral');
