@@ -20,6 +20,8 @@ export function newCareer() {
     flights: 0,
     hours: 0,
     trust: {},
+    score: { total: 0, best: {}, combo: 0, bestCombo: 0 },
+    debtPaid: 0,
   };
 }
 

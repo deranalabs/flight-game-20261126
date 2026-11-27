@@ -16,9 +16,10 @@ import { currentApproach, papiWhite } from '../flight/glidepath.js';
 
 const FONT = '"Trebuchet MS", "Segoe UI", Arial, sans-serif';
 const INK = '#f4f7ef';
-const AMBER = '#ffbf3c';
+const AMBER = '#ffb347';
 const CYAN = '#5fe3ff';
-const BG = 'rgba(10,16,24,0.62)';
+const BG = 'rgba(30,16,24,0.62)'; // warm dusk, as the screens
+const CORAL = '#ff7a59';
 
 function box(ctx, x, y, w, h, fill = BG, radius = 10) {
   ctx.fillStyle = fill;
@@ -305,21 +306,35 @@ function checklist(ctx, ms, x, y, bottom) {
   });
 }
 
-// Score line: the job's pay, then what the runner has counted so far: the best landing
+// Score box: the live sortie score (base points so far) and the combo the next B or
+// better grade earns, big; then the job's pay, or what the runner has counted so far: the best landing
 // grade once there is one, else the ring streak on a ring job or the drops on a drop job.
-function scoreLine(ctx, W, ms, y) {
+function scoreLine(ctx, W, ms, y, live, nextMult) {
   const x = W - 222;
   const sc = ms.score;
   const best = sc.landings.reduce((b, l) => (!b || l.points > b.points ? l : b), null);
   const rings = ms.objectives.filter((o) => o.kind === 'ring').length;
   const drops = ms.objectives.filter((o) => o.kind === 'drop').length;
-  let line = ['LANDING –', '#c9d3dc'];
+  let line = [`JOB PAY ${ms.def.pay} SH`, AMBER];
   if (best) line = [`LANDING ${best.letter} · ${best.points} PTS`, '#9ff0a8'];
   else if (rings) line = [`STREAK ${sc.ringStreak} · MISSED ${sc.ringMisses}`, sc.ringMisses ? AMBER : '#9ff0a8'];
   else if (drops) line = [`DROPS ${sc.drops.length}/${drops} · MISSED ${sc.misses}`, sc.misses ? AMBER : '#9ff0a8'];
-  box(ctx, x, y, 206, 62);
-  text(ctx, `JOB PAY ${ms.def.pay} SH`, x + 12, y + 19, 17, AMBER);
-  text(ctx, line[0], x + 12, y + 43, 16, line[1]);
+  box(ctx, x, y, 206, 86);
+  text(ctx, 'SCORE', x + 12, y + 14, 13, '#d6c3b4');
+  text(ctx, live ? live.base.toLocaleString('en-US') : '0', x + 12, y + 38, 32, INK);
+  text(ctx, 'COMBO', x + 194, y + 14, 13, '#d6c3b4', 'right');
+  text(ctx, `×${nextMult ?? 1}`, x + 194, y + 38, 30, CYAN, 'right');
+  text(ctx, line[0], x + 12, y + 68, 16, line[1]);
+}
+
+// Where the right column has no room (the cockpit), score and combo flank the heading box.
+function scoreFlanks(ctx, W, live, nextMult) {
+  box(ctx, W / 2 - 250, 60, 170, 42, BG, 8);
+  text(ctx, 'SCORE', W / 2 - 238, 81, 13, '#d6c3b4');
+  text(ctx, live ? live.base.toLocaleString('en-US') : '0', W / 2 - 92, 82, 28, INK, 'right');
+  box(ctx, W / 2 + 80, 60, 170, 42, BG, 8);
+  text(ctx, 'COMBO', W / 2 + 92, 81, 13, '#d6c3b4');
+  text(ctx, `×${nextMult ?? 1}`, W / 2 + 238, 82, 28, CYAN, 'right');
 }
 
 /** Toast text for a cleared ring: its number and the count from the objective list. */
@@ -369,17 +384,18 @@ function approachLadder(ctx, W, ms, y, bottom) {
   text(ctx, `${word} ${ap.angle.toFixed(1)}°`, x + 40, y + h - 16, 16, Math.abs(ap.dev) < 0.4 ? '#9ff0a8' : AMBER, 'center');
 }
 
-// Title and scope strip: on the key-help row if it fits there, else right-aligned just
+// Title strip with the wordmark and the Harbour Board debt bar: on the key-help row if it fits there, else right-aligned just
 // above it when the right column leaves room, else the title alone on the key-help row.
-function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom) {
+function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom, debtFrac = 0) {
   const left = 412;
   const title = 'TIDEWING';
-  const scope = `${missionCount} SORTIES · FUEL · DAMAGE · HANGAR`;
+  const scope = `CINDER REACH AIR SERVICE · ${missionCount} SORTIES`;
+  const barW = 120;
   ctx.font = `bold 24px ${FONT}`;
   const tw = ctx.measureText(title).width;
-  ctx.font = `bold 20px ${FONT}`;
+  ctx.font = `bold 18px ${FONT}`;
   const sw = ctx.measureText(scope).width;
-  const fw = tw + sw + 48;
+  const fw = tw + sw + barW + 66;
   const above = bottom - 80;
   let full = true;
   let w = fw;
@@ -387,10 +403,17 @@ function scopeStrip(ctx, W, missionCount, bottom, right, rightColBottom) {
   let y = bottom - 40;
   if (fw <= right - left) x = Math.max(left, Math.min(W / 2 - w / 2, right - w));
   else if (above > rightColBottom + 10 && W - 16 - fw >= left) { x = W - 16 - fw; y = above; }
-  else { full = false; w = tw + 28; x = Math.max(left, Math.min(W / 2 - w / 2, right - w)); }
-  box(ctx, x, y, w, 34, 'rgba(10,16,24,0.72)', 8);
+  else { full = false; w = tw + barW + 44; x = Math.max(left, Math.min(W / 2 - w / 2, right - w)); }
+  box(ctx, x, y, w, 34, 'rgba(30,16,24,0.74)', 8);
   text(ctx, title, x + 14, y + 18, 24, AMBER);
-  if (full) text(ctx, scope, x + tw + 34, y + 18, 20, INK);
+  if (full) text(ctx, `· ${scope}`, x + tw + 22, y + 18, 18, INK);
+  // the Harbour Board note: how much of the 12,000 shillings is paid
+  const bx = x + w - barW - 14;
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.beginPath(); ctx.roundRect(bx, y + 9, barW, 16, 5); ctx.fill();
+  ctx.fillStyle = CORAL;
+  ctx.beginPath(); ctx.roundRect(bx, y + 9, Math.max(6, barW * debtFrac), 16, 5); ctx.fill();
+  text(ctx, `NOTE ${Math.round(debtFrac * 100)}%`, bx + barW / 2, y + 18, 12, INK, 'center');
 }
 
 // A tag beside the next ring in the world: its number and distance, left of the ring so
@@ -460,7 +483,8 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   let y = miniMap(ctx, W, ms, 12);
   y = windBlock(ctx, W, ms, y + 4);
   y = chips(ctx, W, ms, y);
-  if (y + 72 < info.panelTop - 24) { scoreLine(ctx, W, ms, y + 6); y += 68; }
+  if (y + 96 < info.panelTop - 24) { scoreLine(ctx, W, ms, y + 6, info.live, info.nextMult); y += 92; }
+  else scoreFlanks(ctx, W, info.live, info.nextMult);
   ringTag(ctx, ms, info);
   approachLadder(ctx, W, ms, 236, info.panelTop - 24);
   if (info.toast) toast(ctx, W, info.toast);
@@ -475,5 +499,5 @@ export function drawFlightHud(ctx, W, H, ms, info) {
   else if (!ac.onSurface && ac.agl < 12 && ac.vs < -1.2 && ac.ias < 40) banner(ctx, W, H, 'FLARE', CYAN, 'Ease back and close the throttle');
   const help = `${info.view === 'cockpit' ? 'COCKPIT' : 'CHASE'} VIEW · C camera · F flaps · Space drop · Esc pause`;
   text(ctx, help, W - 16, info.panelTop - 12, 13, 'rgba(255,255,255,0.7)', 'right');
-  scopeStrip(ctx, W, info.missionCount, info.panelTop - 4, W - 16 - ctx.measureText(help).width - 14, y);
+  scopeStrip(ctx, W, info.missionCount, info.panelTop - 4, W - 16 - ctx.measureText(help).width - 14, y, info.debtFrac);
 }

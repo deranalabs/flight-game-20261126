@@ -20,6 +20,8 @@ import { SHOTS, readShotRequest } from './shots/shotMode.js';
 import { flyHeading, makeAutopilot } from './flight/autopilot.js';
 import { stallSpeed } from './aircraft/ternSpec.js';
 import { LANDMARKS, RUNWAYS } from './terrain/islandLayout.js';
+import { scoreSortie, recordScore, nextMultiplier } from './hangar/sortieScore.js';
+import { payDebt, debtLeft, DEBT } from './hangar/harbourDebt.js';
 import * as THREE from 'three';
 
 const worldCanvas = document.getElementById('world');
@@ -118,12 +120,15 @@ function startFlight(def) {
 function endFlight() {
   const ms = game.ms;
   const result = missionResult(ms);
+  const scored = scoreSortie(ms, game.career.score.combo);
   const { fuelBill } = recordFlight(game.career, result, ms.ac, ms.def.client);
+  recordScore(game.career, ms.def.id, scored);
+  const debtPaid = payDebt(game.career, scored);
   for (const [id, c] of Object.entries(ms.radio.cast)) game.castStates[id] = c.state;
   saveCareer(game.career);
   game.mode = 'debrief';
   sound.event(result.done ? 'success' : 'fail');
-  showDebrief(ms.def, result, fuelBill, { onRetry: () => startFlight(ms.def), onHangar: toHangar });
+  showDebrief(ms.def, result, fuelBill, { onRetry: () => startFlight(ms.def), onHangar: toHangar }, { scored, debtPaid, trace: ms.trace, career: game.career });
   statusLine.textContent = `${ms.def.title}: ${result.done ? `${result.stars} stars` : 'failed'}`;
 }
 
@@ -230,6 +235,8 @@ function renderFlight(ms, dt, opts = {}) {
   const banner = game.banner && game.t < game.banner.until ? game.banner : null;
   drawFlightHud(hud, W, H, ms, {
     missionNo: ms.def.order, missionCount: MISSIONS.length, view: game.view,
+    live: scoreSortie(ms, game.career.score.combo), nextMult: nextMultiplier(game.career.score.combo),
+    debtFrac: 1 - debtLeft(game.career) / DEBT,
     panelTop: panel.top, banner, radio: ms.radio.current,
     toast: game.toast && game.t < game.toast.until ? game.toast.text : null,
     rotateSpeed: stallSpeed(ac.spec, ac.mass, ac.controls.flaps) * 1.1,
@@ -282,6 +289,12 @@ function frame(now) {
 function renderShot(dt) {
   const s = game.shot;
   if (s.view === 'hangar') { renderHangarScene(0); return; }
+  if (s.view === 'debrief') {
+    renderFlight(s.ms, 0, { t: 0.6, camera: { snap: true } });
+    s.frames = (s.frames ?? 0) + 1;
+    if (s.frames === 3) { document.title = `${document.title} [shot ready]`; window.__shotReady = true; }
+    return;
+  }
   game.view = s.view;
   renderFlight(s.ms, 0, { t: s.t, landingLight: s.landingLight, camera: { ...(s.camera ?? {}), snap: true } });
   s.frames = (s.frames ?? 0) + 1;
@@ -292,6 +305,15 @@ function startShot(req) {
   const s = SHOTS[req.name]();
   game.shot = s;
   game.mode = 'shot';
+  if (s.view === 'debrief') {
+    game.career = s.career;
+    game.ms = s.ms;
+    game.view = 'chase';
+    ensureWorld(s.ms.def.timeOfDay, s.ms.def.weather);
+    showDebrief(s.ms.def, s.result, s.fuelBill, { onRetry() {}, onHangar() {} }, s.extra);
+    return;
+  }
+  if (s.ms && s.career) game.career = s.career;
   if (s.view === 'hangar') {
     game.career = s.career;
     ensureWorld('morning', 'breezy');
@@ -307,6 +329,6 @@ const shotReq = readShotRequest();
 if (shotReq) startShot(shotReq);
 else {
   ensureWorld('morning', 'breezy');
-  showTitle(() => { sound.start(); toHangar(); });
+  showTitle(() => { sound.start(); toHangar(); }, game.career);
 }
 requestAnimationFrame(frame);

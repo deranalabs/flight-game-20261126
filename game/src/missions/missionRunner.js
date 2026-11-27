@@ -11,6 +11,7 @@ import { gradeLanding } from '../flight/landingJudge.js';
 import { condition, PARTS } from '../systems/damageModel.js';
 import { groundHeight } from '../terrain/heightmap.js';
 import { KIT } from './missionKit.js';
+import { traceSample } from '../hangar/sortieScore.js';
 
 /**
  * Begin a mission. career: { upgrades: [], damage: {...} } carries the hangar state in;
@@ -41,6 +42,8 @@ export function startMission(def, career = {}, seed = 1) {
     splashes: [],
     extra: {},
     warned: {},
+    steps: 0,
+    trace: [], // [ft, kt] once a second, for the debrief chart
     ringNo(o) {
       const rings = ms.objectives.filter((x) => x.kind === 'ring');
       return `${rings.indexOf(o) + 1} of ${rings.length}`;
@@ -92,6 +95,7 @@ export function stepMission(ms, actions = {}, opts = {}) {
   ac.events.length = 0;
   stepAircraft(ac, ms.env, dt);
   ms.t += dt;
+  if (ms.steps++ % 60 === 0) ms.trace.push(traceSample(ac));
   if (ms.def.update) ms.def.update(ms, dt, ctx);
 
   for (const e of ac.events) {

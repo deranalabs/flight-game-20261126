@@ -1,6 +1,7 @@
 // The screens around a flight: title, the hangar (mission board, repairs and upgrades
 // with costs, logbook and ratings, the radio cast with their states), the briefing, the
-// debrief with stars and pay, pause and the controls card. Plain DOM, no framework.
+// debrief with grade, score lines, combo and a flight chart, the Harbour Board debt
+// bar and chapter lines, pause and the controls card. Plain DOM, no framework.
 
 import { MISSIONS } from '../missions/index.js';
 import { UPGRADES } from '../aircraft/ternSpec.js';
@@ -11,6 +12,21 @@ import { repairCost, PARTS, PART_NAMES } from '../systems/damageModel.js';
 import { isUnlocked, totalStars, pilotRating, FUEL_PRICE } from '../hangar/careerSave.js';
 import { fmtTime } from '../missions/missionRunner.js';
 import { KEY_HELP } from '../input/pilotControls.js';
+import { DEBT, debtLeft, chapterFor, ENDING } from '../hangar/harbourDebt.js';
+import { MAX, improveTip } from '../hangar/sortieScore.js';
+
+export const WORDMARK = 'TIDEWING · CINDER REACH AIR SERVICE';
+
+/** The Harbour Board debt as a bar: shillings left of the 12,000 owed. */
+function debtBar(career, cls = '') {
+  const left = debtLeft(career);
+  const frac = 1 - left / DEBT;
+  return `<div class="debt ${cls}"><div class="dl">HARBOUR BOARD NOTE <b>${left ? `${left.toLocaleString('en-US')} sh owed` : 'PAID IN FULL'}</b></div>
+    <div class="dbar"><div style="width:${(frac * 100).toFixed(1)}%"></div></div>
+    <div class="dt">${(DEBT - left).toLocaleString('en-US')} of ${DEBT.toLocaleString('en-US')} sh paid</div></div>`;
+}
+
+const nextSortie = (career) => Math.min(MISSIONS.length, MISSIONS.filter((m) => career.missions[m.id]?.stars > 0).length + 1);
 
 const root = () => document.getElementById('ui');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -31,11 +47,15 @@ function mount(html, cls = 'screen dim') {
   return el;
 }
 
-export function showTitle(onStart) {
+export function showTitle(onStart, career) {
+  const ch = chapterFor(nextSortie(career));
   const el = mount(`
     <div class="logo">TIDEWING<small>CINDER REACH AIR SERVICE</small></div>
-    <p>Fly the Tern Mk II floatplane for the islands of the Cinder Reach: mail drops, medevacs,
-    fire bombing, a night lighthouse run, a squall-line crossing and a dead-stick glide off a volcano.</p>
+    <p>Ten sorties in the Tern Mk II floatplane for the islands of the Cinder Reach: mail drops, medevacs,
+    fire bombing, a night lighthouse run, a squall-line crossing, a dead-stick glide off a volcano, a harbour survey and a buoy slalom.
+    Every sortie is scored and debriefed, and every score pays down the 12,000 shillings the service owes the Harbour Board.</p>
+    <p class="chapter">Chapter ${ch.no}: ${esc(ch.title)}. ${esc(debtLeft(career) ? ch.text : ENDING)}</p>
+    ${debtBar(career, 'wide')}
     <button id="go">Open the hangar</button>
     <p style="font-size:15px;color:#b7c0c8">Keyboard and mouse · press H in flight for the controls</p>`, 'screen title-screen dim');
   el.querySelector('#go').onclick = onStart;
@@ -51,7 +71,7 @@ export function showHangar(career, castStates, h) {
     const open = isUnlocked(career, i);
     const w = WEATHER[m.weather];
     const t = timeOf(m.timeOfDay);
-    const best = rec && rec.bestTime ? `best ${fmtTime(rec.bestTime)} · landing ${rec.bestLanding}` : open ? `pays ${m.pay} sh · par ${fmtTime(m.parTime)}` : 'locked: fly the mission before';
+    const best = rec && rec.bestTime ? `best ${(career.score.best[m.id] ?? 0).toLocaleString('en-US')} pts · ${fmtTime(rec.bestTime)} · landing ${rec.bestLanding}` : open ? `pays ${m.pay} sh · par ${fmtTime(m.parTime)}` : 'locked: fly the mission before';
     return `<div class="mission ${open ? '' : 'locked'} ${h.selected === m.id ? 'sel' : ''}" data-id="${m.id}" data-open="${open}">
       <div class="no">${m.order}</div>
       <div class="t">${esc(m.title)}</div>
@@ -83,18 +103,21 @@ export function showHangar(career, castStates, h) {
       <div class="tr">${esc(c.role)} · trust ${trust >= 0 ? '+' : ''}${trust}</div></div></div>`;
   }).join('');
   const done = MISSIONS.filter((m) => career.missions[m.id]?.stars > 0).length;
+  const chapter = chapterFor(nextSortie(career));
   const el = mount(`
     <div class="topbar">
-      <div class="logo">TIDEWING<small>TEODOR'S HANGAR · PORT HALYARD</small></div>
+      <div class="logo">TIDEWING<small>CINDER REACH AIR SERVICE</small></div>
+      ${debtBar(career)}
       <div class="cash">
         <div class="chip">Cash <b>${career.cash} sh</b></div>
-        <div class="chip">Missions <b>${done} / ${MISSIONS.length}</b></div>
+        <div class="chip">Score <b>${career.score.total.toLocaleString('en-US')}</b> · combo <b>${career.score.combo}</b></div>
         <div class="chip">Stars <b>${totalStars(career)} / ${MISSIONS.length * 3}</b></div>
         <div class="chip">Rating <b>${esc(pilotRating(career))}</b></div>
       </div>
     </div>
     <div class="cols">
-      <div class="card"><h2>MISSION BOARD <span>pick a job, read the brief, fly</span></h2>${missionRows}</div>
+      <div class="card board"><h2>MISSION BOARD <span>${done}/${MISSIONS.length} flown · ch ${chapter.no}: ${esc(chapter.title)}</span></h2>
+        <div class="boardnote">${esc(debtLeft(career) ? chapter.text : ENDING)}</div>${missionRows}</div>
       <div class="card"><h2>THE TERN <span>TW-07 · repairs and upgrades</span></h2>${parts}
         <div class="row" style="justify-content:space-between;align-items:center"><span style="color:#b7c0c8;font-size:14px">Fuel ${FUEL_PRICE} sh/L, billed after each flight</span>
         <button data-repair="all" ${total <= 0 || career.cash < total ? 'disabled' : ''}>Repair all ${total} sh</button></div>
@@ -130,19 +153,72 @@ export function showBriefing(def, objectives, career, onFly, onBack) {
   el.querySelector('#back').onclick = onBack;
 }
 
-export function showDebrief(def, result, fuelBill, h) {
-  const lands = result.landings.map((l) => `<tr><td>${esc(l.where)}</td><td>${l.fpm} ft/min</td><td>${l.across === null ? '-' : `${l.across} m`}</td><td>${l.bounces}</td><td class="${l.letter === 'A' ? 'g' : l.letter === 'F' ? 'r' : 'a'}">${l.letter}</td></tr>`).join('');
-  const el = mount(`<div class="brief">
-    <div style="color:var(--amber);font-weight:800">DEBRIEF · MISSION ${def.order}</div>
-    <h1>${result.done ? esc(def.title) + ': complete' : esc(def.title) + ': failed'}</h1>
-    <div class="big-stars">${stars(result.stars)}</div>
-    <ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
-    ${lands ? `<table><tr><th>Landing</th><th>Sink</th><th>Off centre</th><th>Bounces</th><th>Grade</th></tr>${lands}</table>` : ''}
+/**
+ * The debrief: grade letter, score lines, combo, a chart of altitude and airspeed over
+ * the flight, one line on what to improve, and the Harbour Board note. Enter, Space or
+ * Esc, or the button, goes back to the hangar.
+ * x: { scored, debtPaid, trace, career }
+ */
+export function showDebrief(def, result, fuelBill, h, x) {
+  const s = x.scored;
+  const lines = s.lines.map((l) => `<tr><td>${esc(l.label)}</td><td class="pts">${l.pts} / ${MAX[l.key]}</td></tr>`).join('');
+  const left = debtLeft(x.career);
+  const gradeCol = { A: 'var(--good)', B: 'var(--good)', C: 'var(--amber)', D: 'var(--coral)', F: 'var(--bad)' }[s.grade];
+  const el = mount(`<div class="brief debrief">
+    <div class="dhead"><div class="grade" style="color:${gradeCol}">${s.grade}</div>
+      <div><div class="kick">DEBRIEF · SORTIE ${def.order} OF ${MISSIONS.length}</div>
+      <h1>${esc(def.title)}: ${result.done ? 'complete' : 'failed'}</h1>
+      <div class="big-stars">${stars(result.stars)}</div></div>
+      <div class="total"><div class="kick">SCORE</div><b>${s.total.toLocaleString('en-US')}</b>
+        <div class="combo">${s.mult > 1 ? `COMBO ×${s.mult} · run of ${s.run}` : s.run ? 'COMBO RUN STARTED' : 'COMBO RESET'}</div></div></div>
+    <div class="dcols"><table class="lines">${lines}<tr class="sum"><td>Base ${s.base} × combo ${s.mult}</td><td class="pts">${s.total}</td></tr></table>
+      <div class="chartbox"><canvas width="460" height="150"></canvas></div></div>
+    <div class="tip">▶ ${esc(improveTip(s))}</div>
     <div class="meta"><span class="chip">Time <b>${fmtTime(result.time)}</b></span><span class="chip">Pay <b>${result.pay} sh</b></span>
-      <span class="chip">Fuel bill <b>${fuelBill} sh</b></span><span class="chip">Damage taken <b>${result.damageTaken}</b></span></div>
-    <div class="row"><button class="ghost" id="retry">Fly it again</button><button id="hangar">Back to the hangar</button></div></div>`);
-  el.querySelector('#retry').onclick = h.onRetry;
-  el.querySelector('#hangar').onclick = h.onHangar;
+      <span class="chip">Fuel bill <b>${fuelBill} sh</b></span><span class="chip">To the Board <b>${x.debtPaid} sh</b></span></div>
+    ${debtBar(x.career, 'wide')}
+    ${left === 0 && x.debtPaid > 0 ? `<div class="ending">${esc(ENDING)}</div>` : ''}
+    <div class="row"><button class="ghost" id="retry">Fly it again</button><button id="hangar">Back to the hangar (Enter)</button></div></div>`);
+  drawTraceChart(el.querySelector('canvas'), x.trace);
+  const go = () => { window.removeEventListener('keydown', key); h.onHangar(); };
+  const key = (e) => {
+    if (!el.isConnected) { window.removeEventListener('keydown', key); return; }
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); go(); }
+  };
+  window.addEventListener('keydown', key);
+  el.querySelector('#retry').onclick = () => { window.removeEventListener('keydown', key); h.onRetry(); };
+  el.querySelector('#hangar').onclick = go;
+}
+
+/** Altitude (amber, left scale) and airspeed (cyan, right scale) over the flight. */
+export function drawTraceChart(cv, trace) {
+  const ctx = cv.getContext('2d');
+  const W = cv.width;
+  const H = cv.height;
+  const pad = { l: 46, r: 40, t: 22, b: 20 };
+  ctx.clearRect(0, 0, W, H);
+  if (!trace || trace.length < 2) return;
+  const maxFt = Math.max(500, ...trace.map((p) => p[0])) * 1.1;
+  const maxKt = Math.max(60, ...trace.map((p) => p[1])) * 1.1;
+  const px = (i) => pad.l + (i / (trace.length - 1)) * (W - pad.l - pad.r);
+  ctx.font = 'bold 12px "Trebuchet MS", Arial, sans-serif';
+  ctx.strokeStyle = 'rgba(255,220,190,0.14)';
+  ctx.lineWidth = 1;
+  for (let k = 0; k <= 2; k++) { const y = pad.t + k * (H - pad.t - pad.b) / 2; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke(); }
+  const series = (idx, max, col) => {
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath();
+    trace.forEach((p, i) => { const y = H - pad.b - (p[idx] / max) * (H - pad.t - pad.b); i ? ctx.lineTo(px(i), y) : ctx.moveTo(px(i), y); });
+    ctx.stroke();
+  };
+  series(0, maxFt, '#ffb347');
+  series(1, maxKt, '#5fe3ff');
+  ctx.fillStyle = '#ffb347'; ctx.textAlign = 'left'; ctx.fillText('ALTITUDE FT', pad.l, 12);
+  ctx.textAlign = 'right'; ctx.fillText(Math.round(maxFt / 1.1).toLocaleString('en-US'), pad.l - 6, pad.t + 10);
+  ctx.fillText('0', pad.l - 6, H - pad.b);
+  ctx.fillStyle = '#5fe3ff'; ctx.fillText('AIRSPEED KT', W - pad.r, 12);
+  ctx.textAlign = 'left'; ctx.fillText(String(Math.round(maxKt / 1.1)), W - pad.r + 6, pad.t + 10);
+  ctx.fillStyle = '#d6c3b4'; ctx.textAlign = 'center';
+  ctx.fillText(`${fmtTime(trace.length - 1)} flight`, (pad.l + W - pad.r) / 2, H - 5);
 }
 
 export function showPause(h) {

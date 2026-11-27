@@ -1,7 +1,7 @@
 // The Tern Mk II built from parts: tapered fuselage with cabin glass, radial cowling and
 // spinner, a turning three-blade prop, high wing on struts, twin floats on spreader bars,
 // tail with moving rudder and elevator, ailerons and flaps that follow the controls,
-// navigation lights, a strobe, a landing light and the TW-07 registration.
+// navigation lights, a strobe, a landing light, the TW-07 registration and the amber sun tail mark.
 
 import * as THREE from 'three';
 import { glowSprite } from '../render/glowSprite.js';
@@ -204,7 +204,11 @@ export function buildSeaplane() {
   rudder.add(new THREE.Mesh(rgeo, mat(RED)));
   rudder.position.set(0, 1.3, 6.1);
   // water rudders on the float heels
-  body.add(stab, elevator, fin, rudder);
+  // tail mark: the service's amber dusk sun, one disc through the fin so both sides show it
+  const sun = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.14, 20), mat(0xff9a3c));
+  sun.rotation.z = Math.PI / 2;
+  sun.position.set(0, 1.3, 5.5);
+  body.add(stab, elevator, fin, rudder, sun);
 
   // lights: red port tip, green starboard tip, white tail, red strobe on the fin
   const lights = {
